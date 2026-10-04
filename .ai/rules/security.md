@@ -6,7 +6,7 @@ Aligned to NERC CIP.
 
 - All grid-impacting commands are recorded via a synchronous `AuditTo` pipeline (Serilog) to a tamper-evident store.
 - Audit logs are **append-only**. Never write code that edits or deletes existing audit records — only ever append.
-- Audit writes go through an `IAuditProvider` contract exposed by the Audit module (`Rva.Modules.Audit.Contracts`, planned for Phase 4). Route audit writes through that contract rather than logging ad hoc; the Serilog `AuditTo` sink is configured in `Rva.Api`.
+- Audit writes go through an `IAuditProvider` contract exposed by the Audit module (`Rva.Modules.Audit.Contracts`, planned for Phase 4). Route audit writes through that contract rather than logging ad hoc; the Serilog `AuditTo` sink is configured in `Rva.Host`.
 
 ## Access control
 

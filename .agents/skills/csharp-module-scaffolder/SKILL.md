@@ -28,7 +28,7 @@ When adding a new module (bounded context) under `src/Rva.Backend/Modules/`, e.g
 3. **Make everything `internal`** except `<Area>Module.cs`.
 4. **Define the public surface in `.Contracts`:** query interfaces (`I<Area>Queries`), immutable snapshot records, and integration events implementing `IIntegrationEvent`. Use `Rva.SharedKernel` IDs and units in their signatures.
 5. **Give the module its own `DbContext`** mapped to its own schema. Do not add foreign keys to other modules' tables; store their IDs as plain columns.
-6. **Wire it into the host:** reference both projects from `Rva.Api` and call `Add<Area>Module()` / `Map<Area>Endpoints()` in `Program.cs`. Add both projects to `VppAggregator.slnx`.
+6. **Wire it into the host:** reference both projects from `Rva.Host` and call `Add<Area>Module()` / `Map<Area>Endpoints()` in `Program.cs`. Add both projects to `VppAggregator.slnx`.
 7. **Register the module with the architecture tests** in `tests/Rva.ArchitectureTests` so the boundary rules cover it.
 
 ## Verification

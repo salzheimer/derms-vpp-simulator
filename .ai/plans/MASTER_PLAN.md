@@ -28,7 +28,7 @@ Both VPP models share the same assets, grid hierarchy, telemetry, device integra
 ---
 
 ## 3. Technical Stack
-- **Backend (`src/Rva.Backend`):** .NET 10 Modular Monolith (C#). A single `Rva.Api` host composes isolated module projects (`Rva.Modules.*`) that share only a minimal `Rva.SharedKernel`. See `.ai/rules/csharp-monolith.md`.
+- **Backend (`src/Rva.Backend`):** .NET 10 Modular Monolith (C#). A single `Rva.Host` host composes isolated module projects (`Rva.Modules.*`) that share only a minimal `Rva.SharedKernel`. See `.ai/rules/csharp-monolith.md`.
 - **AI Sidecar (`src/Rva.Intelligence`):** Python 3.12 (FastAPI + PyTorch) for LSTM-based forecasting. Separate process.
 - **Simulator (`src/Rva.Simulator`):** Monte Carlo Chaos Engine with fault injection. Separate process that talks to the backend only over HTTP and MQTT.
 - **Data:** PostgreSQL + PostGIS (`rva_core`) for topology and simulation ledgers; TimescaleDB (`rva_telemetry`) for time-series telemetry; Redis for real-time state caching.
@@ -41,7 +41,7 @@ Both VPP models share the same assets, grid hierarchy, telemetry, device integra
 ### Phase 1: Ingestion, Geospatial & Chaos (Weeks 1-3)
 See `.ai/plans/PHASE_1_PLAN.md` for full implementation detail and the Definition of Done checklist.
 
-- [ ] **Foundation:** Solution skeleton, `Rva.Api` host, `Rva.SharedKernel`, architecture test suite, and Docker infrastructure (both databases, Mosquitto, Redis).
+- [ ] **Foundation:** Solution skeleton, `Rva.Host` host, `Rva.SharedKernel`, architecture test suite, and Docker infrastructure (both databases, Mosquitto, Redis).
 - [ ] **GridTopology module:** Hierarchical grid topology (`Substation` → `Feeder` → `NeighborhoodTransformer` → `Premise`), generic `Asset`, and the `technology_types` / `interconnection_types` lookups.
 - [ ] **Simulation module:** Run ledger (`simulation_runs`, `simulation_run_status_types`) and per-run asset overrides (`simulation_asset_states`), isolating each run's state.
 - [ ] **Telemetry module:** High-throughput MQTT ingestion with CloudEvents, an Anti-Corruption Layer using `protocol_mappings`, and the `asset_telemetry` hypertable.

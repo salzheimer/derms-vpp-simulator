@@ -8,7 +8,7 @@ RVA is an orchestration platform for a Virtual Power Plant: managing 500+ Distri
 
 ## Architecture: Hybrid Modular Monolith
 
-- **C# core (`src/Rva.Backend`, .NET 10)** — the source of truth for grid state, security, and dispatch commands. Authoritative and mission-critical. A single `Rva.Api` host composes isolated module projects (`Rva.Modules.*`), each owning its own domain and data, vertically sliced by feature, and sharing only a minimal `Rva.SharedKernel`.
+- **C# core (`src/Rva.Backend`, .NET 10)** — the source of truth for grid state, security, and dispatch commands. Authoritative and mission-critical. A single `Rva.Host` host composes isolated module projects (`Rva.Modules.*`), each owning its own domain and data, vertically sliced by feature, and sharing only a minimal `Rva.SharedKernel`.
 - **Python AI sidecar (`src/Rva.Intelligence`, FastAPI + PyTorch)** — produces load forecasts and dispatch *recommendations only*. It is a **Consultant, not the Decision Maker** — it never has direct dispatch authority.
 - **Simulator (`src/Rva.Simulator`)** — Monte Carlo "Chaos Engine" for fault injection (thermal, voltage, comms) to test resilience. A separate process that talks to the backend only over HTTP and MQTT; it is not a backend module.
 

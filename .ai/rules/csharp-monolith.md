@@ -4,12 +4,12 @@
 The C# core is the absolute **source of truth** for grid state, security, and dispatch. It never blocks on or blindly trusts the Python AI sidecar (`Rva.Intelligence`). Sidecar output is strictly a recommendation, wrapped in a **Polly Circuit Breaker**, featuring a "Safe-Fail" default if the sidecar is unhealthy or tripped.
 
 ## 2. Solution Layout
-The backend is a **Modular Monolith** built from **separate C# projects (`.csproj`)**, not subfolders, so module boundaries are enforced at compile time. `Rva.Api` is the only host; modules are class libraries it composes.
+The backend is a **Modular Monolith** built from **separate C# projects (`.csproj`)**, not subfolders, so module boundaries are enforced at compile time. `Rva.Host` is the only host; modules are class libraries it composes.
 
 ```text
 src/
 ├── Rva.Backend/
-│   ├── Rva.Api/                                <-- Host & composition root (DI, Serilog, middleware, endpoint mapping)
+│   ├── Rva.Host/                               <-- Host & composition root (DI, Serilog, middleware, endpoints, background workers)
 │   ├── Rva.SharedKernel/                       <-- Shared vocabulary: typed IDs, units, reference codes, Result
 │   └── Modules/
 │       ├── Rva.Modules.GridTopology/           <-- Module implementation (internal)
@@ -28,12 +28,12 @@ tests/
 
 | Project | May reference |
 |---|---|
-| `Rva.Api` | All modules and their `.Contracts`, `Rva.SharedKernel` |
+| `Rva.Host` | All modules and their `.Contracts`, `Rva.SharedKernel` |
 | `Rva.Modules.<X>` | `Rva.SharedKernel`, its own `.Contracts`, other modules' `.Contracts` |
 | `Rva.Modules.<X>.Contracts` | `Rva.SharedKernel` only |
 | `Rva.SharedKernel` | Nothing outside the .NET base class library |
 
-`Rva.Simulator` and `Rva.Intelligence` never reference backend projects or databases. They talk to the backend only over the network — HTTP via `Rva.Api` and MQTT.
+`Rva.Simulator` and `Rva.Intelligence` never reference backend projects or databases. They talk to the backend only over the network — HTTP via `Rva.Host` and MQTT.
 
 ## 3. Module Ownership
 * **Each module owns its domain model.** Entities, aggregates, and invariants live inside the module that owns them (e.g. `Asset` and the grid hierarchy live in GridTopology). Other modules never use another module's entities.
@@ -60,18 +60,20 @@ Rva.Modules.<Area>/
 * **Fluent API only.** Map entities with EF Core Fluent API configurations in `Persistence/`; do not put ORM attributes (`[Table]`, `[Column]`, `[Key]`, `[ForeignKey]`) on domain types.
 
 ## 5. The Shared Kernel (`Rva.SharedKernel`)
+**Grow it on demand:** a type is added only when a second module needs it — never speculatively. A type that one module uses stays in that module.
+
 A type belongs in the kernel only if **all** of these hold: it is used by two or more modules, has no identity or lifecycle, is immutable, rarely changes, and depends on nothing but the .NET base class library.
 
-* **Contents:**
-  * Typed identifiers — `AssetId`, `SubstationId`, `FeederId`, `TransformerId`, `PremiseId`, `SimulationRunId`.
-  * Units — `Kilowatts`, `KilowattHours`, `Kilovars`, `Volts`, `Percentage`.
+* **Contents** (what it may hold, added as needed):
+  * Typed identifiers — `AssetId`, `SubstationId`, `FeederId`, `TransformerId`, `PremiseId`, `MicrogridId`, `SimulationRunId`.
+  * Units — `Kilowatts`, `KilowattHours`, `KilovoltAmperes`, `Kilovars`, `Volts`, `Percentage`.
   * Reference codes — `TechnologyTypeCode`, `InterconnectionTypeCode`, `ProtocolStandard`. These wrap the lookup-table code string; they are **not** C# enums, so adding a lookup row never requires a code change. The owning module validates codes against its table.
   * `Result`, `Result<T>`, `Error`, and the `IIntegrationEvent` marker.
 * **Prohibited:** entities, business logic, DTOs, module contracts, `DbContext`s, EF Core or any other package dependency, and operational workflows.
 
 ## 6. Cross-Cutting Concerns
 * **Errors:** Expected failures return `Result`/`Result<T>`; exceptions are for unexpected faults only.
-* **Logging:** Serilog is configured only in `Rva.Api`. Modules inject `ILogger<T>` and never reference Serilog directly. The audit pipeline is covered in `.ai/rules/security.md`.
+* **Logging:** Serilog is configured only in `Rva.Host`. Modules inject `ILogger<T>` and never reference Serilog directly. The audit pipeline is covered in `.ai/rules/security.md`.
 
 ## 7. High-Throughput Ingestion & Anti-Corruption Layer (ACL)
 * **Asynchronous Pipelines:** MQTT ingestion uses `System.Threading.Channels` (Producer/Consumer) inside `Rva.Modules.Telemetry` to prevent bottlenecks.

@@ -20,10 +20,10 @@ This plan builds the backend foundation and the first three modules. It is organ
 
 **Goal:** A buildable, testable skeleton that enforces the module rules before any feature code exists.
 
-* **Solution:** Add `Rva.Api`, `Rva.SharedKernel`, and the `Rva.Modules.<X>` / `Rva.Modules.<X>.Contracts` project pairs to `VppAggregator.slnx`, with only the references allowed by the rule.
-* **Host (`Rva.Api`):** Minimal API host. Each module exposes `Add<X>Module(IServiceCollection, IConfiguration)` and `Map<X>Endpoints(IEndpointRouteBuilder)`; the host calls these and nothing else module-specific. Serilog configured here.
-* **Shared kernel (`Rva.SharedKernel`):** Typed IDs (`AssetId`, `SubstationId`, `FeederId`, `TransformerId`, `PremiseId`, `MicrogridId`, `SimulationRunId`), units (`Kilowatts`, `KilowattHours`, `KilovoltAmperes`, `Kilovars`, `Volts`, `Percentage`), reference codes (`TechnologyTypeCode`, `InterconnectionTypeCode`, `ProtocolStandard`), `Result`/`Result<T>`/`Error`, `IIntegrationEvent`.
-* **Integration events:** An in-process event publisher in `Rva.Api` (e.g. a `Channel`-backed dispatcher) that modules publish to via an abstraction; handlers live in the consuming module.
+* **Solution:** Add `Rva.Host`, `Rva.SharedKernel`, and the `Rva.Modules.<X>` / `Rva.Modules.<X>.Contracts` project pairs to `VppAggregator.slnx`, with only the references allowed by the rule.
+* **Host (`Rva.Host`):** ASP.NET Core host — HTTP endpoints plus background workers (e.g. MQTT ingestion). Each module exposes `Add<X>Module(IServiceCollection, IConfiguration)` and `Map<X>Endpoints(IEndpointRouteBuilder)`; the host calls these and nothing else module-specific. Serilog configured here.
+* **Shared kernel (`Rva.SharedKernel`):** Starts with only the types Step 1's contracts need; anything else is added when a second module needs it (see the rule's section 5). Expected over Phase 1: typed IDs (`AssetId`, `SubstationId`, `FeederId`, `TransformerId`, `PremiseId`, `MicrogridId`, `SimulationRunId`), units (`Kilowatts`, `KilowattHours`, `KilovoltAmperes`, `Kilovars`, `Volts`, `Percentage`), reference codes (`TechnologyTypeCode`, `InterconnectionTypeCode`, `ProtocolStandard`), `Result`/`Result<T>`/`Error`, `IIntegrationEvent`.
+* **Integration events:** An in-process event publisher in `Rva.Host` (e.g. a `Channel`-backed dispatcher) that modules publish to via an abstraction; handlers live in the consuming module.
 * **Architecture tests:** Reference every backend project from `tests/Rva.ArchitectureTests` and implement the full suite listed in the rule's section 8.
 * **Infrastructure:** `docker compose up` brings up `rva-core-db`, `rva-telemetry-db`, Mosquitto (with a mounted `mosquitto.conf`), and Redis on one network, and runs each database's init script.
 
