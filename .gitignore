@@ -1,0 +1,78 @@
+# .NET files and directories that need to be ignored
+bin/
+obj/
+.DS_Store
+
+
+#Python
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# .NET / IDE extras
+*.user
+*.suo
+.vs/
+.idea/
+TestResults/
+*.trx
+coverage*.xml
+
+# Python virtual environments and tool caches
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node (future React dashboard)
+node_modules/
+
+# Secrets and local environment overrides (compose/MCP config must read secrets from these, never inline)
+.env
+.env.*
+!.env.example
+
+# ==============================================================================
+# 🤖 AI Assistant Agnostic Configuration & Exclusions
+# Shared agent instructions are COMMITTED: AGENTS.md, CLAUDE.md, .ai/, .agents/,
+# .claude/skills/, .claude/settings.json, .cursorrules, .cursor/rules/,
+# .github/copilot-instructions.md, .github/instructions/, .github/prompts/, .mcp.json.
+# Only personal, machine-local, session, and cache files are ignored below.
+# ==============================================================================
+
+#-- Claude Code --
+# Claude Code session data and temporary tracking
+.claude/sessions/
+.claude/todos/
+.claude/scheduled_tasks.*
+.claude/.cc-writes/
+.claude/worktrees/
+
+# Personal/machine-specific settings and memory
+.claude/settings.local.json
+CLAUDE.local.md
+
+# -- Cursor --
+# Shared rules live in .cursorrules and .cursor/rules/ (committed); personal state lives in the app, not the repo
+.cursor/*
+!.cursor/rules/
+!.cursor/mcp.json
+
+# -- GitHub Copilot / VS Code --
+# Copilot's shared instructions live under .github/ (committed). Keep only shared VS Code config.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/mcp.json
+*.code-workspace
+
+# -- Other assistants (Aider, Continue, Windsurf, Codex) --
+# Shared files (.windsurfrules, .aider.conf.yml, AGENTS.md) are committed; histories and caches are not
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache*/
+.continue/sessions/

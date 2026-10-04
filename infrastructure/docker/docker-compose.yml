@@ -1,0 +1,165 @@
+# Local development stack for RVA.
+#   docker compose -f infrastructure/docker/docker-compose.yml up -d
+# Credentials come from infrastructure/docker/.env (copy .env.example); the defaults below are for local development only.
+# Init scripts run only when a database volume is empty: after changing one, recreate with `docker compose ... down -v`.
+
+services:
+  # 1. Core Relational Database (PostgreSQL + PostGIS): topology and simulation schemas
+  rva-core-db:
+    image: postgis/postgis:18-3.6
+    container_name: rva_core_db
+    environment:
+      POSTGRES_DB: rva_core
+      POSTGRES_USER: ${RVA_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${RVA_DB_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      # CRITICAL: PostgreSQL 18 drops the trailing "/data" for the volume target
+      - pg_core_data:/var/lib/postgresql
+      # Mounted over the whole init directory on purpose: it replaces the image's own initdb-postgis.sh, which would
+      # install postgis_topology (creating a schema named "topology") and the tiger geocoder. rva_core_init.sql
+      # creates the postgis extension itself.
+      - ../postgres/core:/docker-entrypoint-initdb.d:ro
+    networks:
+      - rva-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d rva_core"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Time-Series Database (TimescaleDB): telemetry hypertable
+  rva-telemetry-db:
+    image: timescale/timescaledb:latest-pg17
+    container_name: rva_telemetry_db
+    environment:
+      POSTGRES_DB: rva_telemetry
+      POSTGRES_USER: ${RVA_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${RVA_DB_PASSWORD:-password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_telemetry_data:/var/lib/postgresql/data
+      # Mounted as a single file, NOT over the directory: the image's own 000_install_timescaledb.sh and
+      # 001_timescaledb_tune.sh must still run. The 100_ prefix runs ours after them.
+      - ../postgres/telemetry/telemetry_init.sql:/docker-entrypoint-initdb.d/100_telemetry_init.sql:ro
+    networks:
+      - rva-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d rva_telemetry"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. MQTT Broker (Eclipse Mosquitto): DER telemetry ingestion
+  rva-mqtt-broker:
+    image: eclipse-mosquitto:2
+    container_name: rva_mqtt_broker
+    ports:
+      - "1883:1883"  # Standard MQTT port
+      - "9001:9001"  # WebSocket port
+    volumes:
+      - ../mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+    networks:
+      - rva-network
+    healthcheck:
+      # Publishing succeeds as soon as the broker accepts connections (subscribing would wait for a message)
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t rva/healthcheck -m ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 4. Redis: real-time state caching for asset availability and geospatial lookups
+  rva-redis:
+    image: redis:7
+    container_name: rva_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rva-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Rva.Backend: .NET 10 Modular Monolith, run by the Rva.Host project (placeholder until Step 0 adds its Dockerfile)
+  rva-backend:
+    build:
+      context: ../../src/Rva.Backend
+      dockerfile: Dockerfile
+    container_name: rva_backend
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Core: "Host=rva-core-db;Port=5432;Database=rva_core;Username=${RVA_DB_USER:-postgres};Password=${RVA_DB_PASSWORD:-password}"
+      ConnectionStrings__Telemetry: "Host=rva-telemetry-db;Port=5432;Database=rva_telemetry;Username=${RVA_DB_USER:-postgres};Password=${RVA_DB_PASSWORD:-password}"
+      ConnectionStrings__Redis: "rva-redis:6379"
+      MqttSettings__Host: "rva-mqtt-broker"
+      MqttSettings__Port: 1883
+      AiSidecar__BaseUrl: "http://rva-intelligence:8000"  # optional dependency: calls go through the Polly circuit breaker
+    depends_on:
+      rva-core-db:
+        condition: service_healthy
+      rva-telemetry-db:
+        condition: service_healthy
+      rva-mqtt-broker:
+        condition: service_healthy
+      rva-redis:
+        condition: service_healthy
+    # TODO: Remove profiles once ready for integration
+    profiles: ["backend"]
+    networks:
+      - rva-network
+
+  # Rva.Simulator: Monte Carlo Chaos Engine (placeholder). Separate process: reaches the backend only over HTTP and MQTT
+  rva-simulator:
+    build:
+      context: ../../src/Rva.Simulator
+      dockerfile: Dockerfile
+    container_name: rva_simulator
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      Backend__BaseUrl: "http://rva-backend:8080"  # topology snapshot and run configuration
+      MqttSettings__Host: "rva-mqtt-broker"
+      MqttSettings__Port: 1883
+      SimulatorSettings__FaultInjectionRate: 0.05  # 5% fault rate
+    depends_on:
+      rva-mqtt-broker:
+        condition: service_healthy
+    # TODO: Remove profiles once ready for integration
+    profiles: ["simulator"]
+    networks:
+      - rva-network
+
+  # Rva.Intelligence: Python AI Sidecar (FastAPI + LSTM forecasting). The backend calls it; it does not depend on the backend
+  rva-intelligence:
+    build:
+      context: ../../src/Rva.Intelligence
+      dockerfile: Dockerfile
+    container_name: rva_intelligence
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONUNBUFFERED: 1
+      LOG_LEVEL: "INFO"
+      BACKEND_URL: "http://rva-backend:8080"
+    # TODO: Remove profiles once ready for integration
+    profiles: ["intelligence"]
+    networks:
+      - rva-network
+
+volumes:
+  pg_core_data:
+  pg_telemetry_data:
+  mosquitto_data:
+  redis_data:
+
+networks:
+  rva-network:
+    driver: bridge

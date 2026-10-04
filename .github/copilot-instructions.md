@@ -1,0 +1,1 @@
+For project context, architecture, and coding conventions, read `AGENTS.md` at the repo root and the topic files under `.ai/rules/` (C# monolith, Python sidecar, domain glossary, security). This file intentionally stays thin — canonical guidance lives there so it isn't duplicated per tool.
