@@ -2,6 +2,14 @@
 
 Canonical build/test/lint commands for this repo. Any AI tool or human should use these rather than guessing.
 
+## One-time setup (per clone)
+
+```
+git config core.hooksPath .githooks
+```
+
+Enables the shared hooks in `.githooks/`, which block commits on `main` and pushes to `main`. Changes reach `main` only through a pull request (see `.ai/rules/agent-workflow.md`). The hooks are a local safety net; branch protection on GitHub is the real enforcement.
+
 ## C# (`src/Rva.Backend`, `src/Rva.Simulator`)
 
 ```
