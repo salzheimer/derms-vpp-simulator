@@ -33,6 +33,7 @@ Both VPP models share the same assets, grid hierarchy, telemetry, device integra
 - **Simulator (`src/Rva.Simulator`):** Monte Carlo Chaos Engine with fault injection. Separate process that talks to the backend only over HTTP and MQTT.
 - **Data:** PostgreSQL + PostGIS (`rva_core`) for topology and simulation ledgers; TimescaleDB (`rva_telemetry`) for time-series telemetry; Redis for real-time state caching.
 - **Messaging:** Eclipse Mosquitto (MQTT) with CloudEvents envelopes.
+- **Deployment:** one utility per deployment. A second utility runs as a separate deployment with its own host, databases, Redis prefix, and MQTT topic root.
 
 ---
 

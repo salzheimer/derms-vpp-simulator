@@ -91,3 +91,13 @@ Every structural rule above is backed by architecture tests in `tests/Rva.Archit
 * No `Controllers/`, `Services/`, or `Repositories/` folders or namespaces in modules.
 
 These tests run on every pull request.
+
+## 9. Persistence & Change Tracking
+Every module chooses its change-tracking model by the nature of its data:
+
+* **State that gets edited is system-versioned** (e.g. topology: assets, ratings, limits, lookups). Each table carries `created_at` and a `sys_period` validity range, and has a `<table>_history` twin, a versioning trigger, and a `<table>_as_of(timestamptz)` function. Version **all** tables a snapshot joins across, or reconstructed history is inconsistent. The history table's columns must match the main table's (same order) plus `operation`, `changed_by`, `actor_type`, `change_reason`; the init script fails if they do not. EF Core maps only the main tables and never writes `created_at` or `sys_period`.
+* **Things that happen are append-only events** (e.g. simulation run lifecycle, telemetry, later dispatch commands and audit). Event tables reject `UPDATE` and `DELETE` in the database, not just by convention. Inputs to an execution (e.g. a run's scope, topology version, and overrides) are immutable once it starts.
+* **Who and why** are recorded from per-transaction settings, set by the module at the start of each command's transaction: `SET LOCAL rva.actor = '<uuid>'`, `rva.actor_type` (`user` | `service` | `system`), and `rva.change_reason`. Every change therefore runs in an explicit transaction.
+* **Identities:** user and service IDs are UUIDv7, owned by the Identity module (Phase 3). A login provider's `(issuer, subject)` is mapped to a user ID and is never used as a key. Actor IDs and `actor_type` are stored as plain values with no cross-module foreign key. Audit records copy the actor's details at the time of writing.
+* **Outbox:** each module writes its integration events to its own `outbox_messages` table in the same transaction as the change, and a background publisher delivers them. Versioning provides history; the outbox provides reliable delivery.
+* **Timestamps:** use `clock_timestamp()`, not `now()`, so several changes in one transaction stay ordered. Every table that stores entities has `created_at`; versioned tables use `lower(sys_period)` as their last-updated time instead of a separate `updated_at`.
