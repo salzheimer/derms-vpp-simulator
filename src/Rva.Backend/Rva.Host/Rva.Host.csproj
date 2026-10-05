@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Composition root: the only process for the backend. References every module and its .Contracts. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Rva.SharedKernel\Rva.SharedKernel.csproj" />
+    <ProjectReference Include="..\Modules\Rva.Modules.GridTopology.Contracts\Rva.Modules.GridTopology.Contracts.csproj" />
+    <ProjectReference Include="..\Modules\Rva.Modules.GridTopology\Rva.Modules.GridTopology.csproj" />
+    <ProjectReference Include="..\Modules\Rva.Modules.Telemetry.Contracts\Rva.Modules.Telemetry.Contracts.csproj" />
+    <ProjectReference Include="..\Modules\Rva.Modules.Telemetry\Rva.Modules.Telemetry.csproj" />
+    <ProjectReference Include="..\Modules\Rva.Modules.Simulation.Contracts\Rva.Modules.Simulation.Contracts.csproj" />
+    <ProjectReference Include="..\Modules\Rva.Modules.Simulation\Rva.Modules.Simulation.csproj" />
+  </ItemGroup>
+</Project>

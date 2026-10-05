@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Public API of the Telemetry module: query interfaces, snapshots, integration events.
+       References Rva.SharedKernel only. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\Rva.SharedKernel\Rva.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

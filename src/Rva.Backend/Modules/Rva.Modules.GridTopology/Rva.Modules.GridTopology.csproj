@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- GridTopology module implementation. Everything is internal except GridTopologyModule.
+       May reference Rva.SharedKernel and any module's .Contracts, never another module's implementation. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Rva.SharedKernel\Rva.SharedKernel.csproj" />
+    <ProjectReference Include="..\Rva.Modules.GridTopology.Contracts\Rva.Modules.GridTopology.Contracts.csproj" />
+  </ItemGroup>
+</Project>

@@ -81,11 +81,13 @@ A type belongs in the kernel only if **all** of these hold: it is used by two or
 * **Data-driven, cached lookups:** Mappings live in lookup tables, not in hardcoded `switch` statements. Load them into memory at startup and refresh on change — never query the database per message.
 
 ## 8. Architectural Fitness Enforcement
-Every structural rule above is backed by architecture tests (ArchUnitNET) in `tests/Rva.ArchitectureTests`, which fail the build on violation. Select types **by assembly**, not by exact namespace — vertical slices put most types in sub-namespaces. The suite must cover:
+Every structural rule above is backed by architecture tests in `tests/Rva.ArchitectureTests`, which fail the build on violation. Project references are checked in the `.csproj` files, so a forbidden reference fails as soon as it is added; type rules use ArchUnitNET and reflection on the compiled assemblies, selecting types **by assembly**, not by exact namespace (vertical slices put most types in sub-namespaces). The test project must reference every backend project, and a test enforces this. The suite must cover:
 * No module implementation project depends on another module's implementation project (all pairs).
 * `.Contracts` projects depend only on `Rva.SharedKernel`.
 * `Rva.SharedKernel` depends only on `System.*`.
 * No type outside a module references that module's `DbContext`.
 * No ORM attributes on any domain type.
+* Only `<Area>Module` is public in a module implementation project.
+* No `Controllers/`, `Services/`, or `Repositories/` folders or namespaces in modules.
 
 These tests run on every pull request.
