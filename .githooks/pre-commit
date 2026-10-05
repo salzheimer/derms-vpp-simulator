@@ -1,0 +1,17 @@
+#!/bin/sh
+# Blocks commits made directly on protected branches (see .ai/rules/agent-workflow.md).
+# Work on a short-lived branch and merge to main through a pull request.
+# Enable once per clone:  git config core.hooksPath .githooks
+
+protected_branches="main"
+
+branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) || exit 0  # detached HEAD: nothing to protect
+
+for protected in $protected_branches; do
+    if [ "$branch" = "$protected" ]; then
+        echo "pre-commit: direct commits to '$protected' are not allowed." >&2
+        echo "Create a branch first, e.g.  git switch -c step/<plan-step-id>-<slug>" >&2
+        exit 1
+    fi
+done
+exit 0

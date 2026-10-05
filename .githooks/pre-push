@@ -1,0 +1,17 @@
+#!/bin/sh
+# Blocks pushes that would update a protected branch on the remote (see .ai/rules/agent-workflow.md).
+# Changes reach main only by merging a pull request on GitHub.
+# Enable once per clone:  git config core.hooksPath .githooks
+
+protected_branches="main"
+
+# git passes one line per ref being pushed: <local ref> <local sha> <remote ref> <remote sha>
+while read -r local_ref local_sha remote_ref remote_sha; do
+    for protected in $protected_branches; do
+        if [ "$remote_ref" = "refs/heads/$protected" ]; then
+            echo "pre-push: pushing directly to '$protected' is not allowed; open a pull request instead." >&2
+            exit 1
+        fi
+    done
+done
+exit 0
