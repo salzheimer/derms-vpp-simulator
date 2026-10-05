@@ -19,6 +19,16 @@ dotnet test VppAggregator.slnx
 
 `dotnet test` includes `tests/Rva.ArchitectureTests`, which enforces the module boundaries in `.ai/rules/csharp-monolith.md`. A failure there is a design violation to fix, not a test to update.
 
+## Database schema (`infrastructure/postgres`)
+
+With the stack running (see Infrastructure below), run the core schema smoke test. It rolls back and leaves no data:
+
+```
+docker exec -i rva_core_db psql -U postgres -d rva_core -v ON_ERROR_STOP=1 < infrastructure/postgres/tests/rva_core_smoke_test.sql
+```
+
+It prints `rva_core smoke test: PASS`. Init scripts run only on an empty volume, so after changing one, recreate it with `docker compose -f infrastructure/docker/docker-compose.yml down -v`.
+
 ## Python (`src/Rva.Intelligence`)
 
 No test/lint tooling configured yet. Once added, expected commands:
