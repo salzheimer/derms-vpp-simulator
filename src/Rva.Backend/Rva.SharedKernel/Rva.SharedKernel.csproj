@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Shared vocabulary for all modules. References nothing outside the .NET base class library:
+       no project or package references (see .ai/rules/csharp-monolith.md section 5). -->
+</Project>

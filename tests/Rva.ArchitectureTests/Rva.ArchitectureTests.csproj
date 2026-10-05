@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -17,6 +17,19 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Every backend project must be referenced here so its assembly is built and checked.
+       ProjectReferenceTests fails if one is missing. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Rva.Backend\Rva.Host\Rva.Host.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Rva.SharedKernel\Rva.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Modules\Rva.Modules.GridTopology\Rva.Modules.GridTopology.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Modules\Rva.Modules.GridTopology.Contracts\Rva.Modules.GridTopology.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Modules\Rva.Modules.Telemetry\Rva.Modules.Telemetry.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Modules\Rva.Modules.Telemetry.Contracts\Rva.Modules.Telemetry.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Modules\Rva.Modules.Simulation\Rva.Modules.Simulation.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Modules\Rva.Modules.Simulation.Contracts\Rva.Modules.Simulation.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

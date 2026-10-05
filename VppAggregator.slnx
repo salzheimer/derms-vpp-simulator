@@ -2,6 +2,18 @@
   <Folder Name="/src/">
     <Project Path="src/Rva.Simulator/Rva.Simulator.csproj" />
   </Folder>
+  <Folder Name="/src/Rva.Backend/">
+    <Project Path="src/Rva.Backend/Rva.Host/Rva.Host.csproj" />
+    <Project Path="src/Rva.Backend/Rva.SharedKernel/Rva.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Rva.Backend/Modules/">
+    <Project Path="src/Rva.Backend/Modules/Rva.Modules.GridTopology/Rva.Modules.GridTopology.csproj" />
+    <Project Path="src/Rva.Backend/Modules/Rva.Modules.GridTopology.Contracts/Rva.Modules.GridTopology.Contracts.csproj" />
+    <Project Path="src/Rva.Backend/Modules/Rva.Modules.Telemetry/Rva.Modules.Telemetry.csproj" />
+    <Project Path="src/Rva.Backend/Modules/Rva.Modules.Telemetry.Contracts/Rva.Modules.Telemetry.Contracts.csproj" />
+    <Project Path="src/Rva.Backend/Modules/Rva.Modules.Simulation/Rva.Modules.Simulation.csproj" />
+    <Project Path="src/Rva.Backend/Modules/Rva.Modules.Simulation.Contracts/Rva.Modules.Simulation.Contracts.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj" />
   </Folder>
