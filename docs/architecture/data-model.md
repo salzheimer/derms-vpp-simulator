@@ -41,6 +41,18 @@ erDiagram
         timestamptz created_at
         tstzrange sys_period
     }
+    grid_node_types {
+        int grid_node_type_id PK
+        varchar internal_code UK "substation, feeder, neighborhood_transformer, premise, microgrid"
+        varchar display_name
+        timestamptz created_at
+        tstzrange sys_period
+    }
+    grid_nodes {
+        bigint grid_node_id PK "one id space across node levels"
+        int grid_node_type_id FK
+        timestamptz created_at
+    }
     hardware_profiles {
         int hardware_profile_id PK
         varchar hardware_profile_code UK "e.g. tesla_powerwall_3"
@@ -56,6 +68,7 @@ erDiagram
     }
     substations {
         bigint substation_id PK
+        bigint grid_node_id UK, FK "assigned by trigger"
         varchar substation_code UK
         double rated_capacity_kva
         geography location
@@ -64,6 +77,7 @@ erDiagram
     }
     feeders {
         bigint feeder_id PK
+        bigint grid_node_id UK, FK "assigned by trigger"
         bigint substation_id FK
         varchar feeder_code UK
         double nominal_voltage_kv "e.g. 12.47"
@@ -74,6 +88,7 @@ erDiagram
     }
     neighborhood_transformers {
         bigint neighborhood_transformer_id PK
+        bigint grid_node_id UK, FK "assigned by trigger"
         bigint feeder_id FK
         varchar neighborhood_transformer_code UK
         double rated_capacity_kva
@@ -84,7 +99,9 @@ erDiagram
     }
     premises {
         bigint premise_id PK
-        bigint neighborhood_transformer_id FK
+        bigint grid_node_id UK, FK "assigned by trigger"
+        bigint neighborhood_transformer_id FK "secondary service; exactly one of transformer or feeder"
+        bigint feeder_id FK "primary service"
         varchar premise_code UK
         int customer_segment_id FK
         double service_capacity_kva "site import limit"
@@ -97,6 +114,7 @@ erDiagram
     }
     microgrids {
         bigint microgrid_id PK
+        bigint grid_node_id UK, FK "assigned by trigger"
         varchar microgrid_code UK
         bigint feeder_id FK "exactly one of feeder or substation"
         bigint substation_id FK
@@ -109,7 +127,8 @@ erDiagram
     assets {
         bigint asset_id PK
         varchar asset_code UK
-        bigint premise_id FK "exactly one of premise, feeder, substation"
+        bigint premise_id FK "exactly one of premise, transformer, feeder, substation"
+        bigint neighborhood_transformer_id FK
         bigint feeder_id FK
         bigint substation_id FK
         bigint microgrid_id FK "optional membership"
@@ -152,22 +171,31 @@ erDiagram
     customer_segments ||--o{ premises : "service class"
     substations ||--o{ feeders : "serves"
     feeders ||--o{ neighborhood_transformers : "serves"
-    neighborhood_transformers ||--o{ premises : "serves"
+    neighborhood_transformers |o--o{ premises : "serves (secondary)"
+    feeders |o--o{ premises : "serves (primary)"
+    grid_node_types ||--o{ grid_nodes : "classifies"
+    grid_nodes ||--o| substations : "identifies"
+    grid_nodes ||--o| feeders : "identifies"
+    grid_nodes ||--o| neighborhood_transformers : "identifies"
+    grid_nodes ||--o| premises : "identifies"
+    grid_nodes ||--o| microgrids : "identifies"
     substations |o--o{ microgrids : "connects"
     feeders |o--o{ microgrids : "connects"
     substations |o--o{ assets : "connects"
     feeders |o--o{ assets : "connects"
+    neighborhood_transformers |o--o{ assets : "connects"
     premises |o--o{ assets : "connects"
     microgrids |o--o{ assets : "groups"
     assets ||--o{ asset_components : "made of"
 ```
 
 **Rules the diagram can't show:**
-- **Connection points:** an asset connects at exactly one of a premise, feeder, or substation; a microgrid at exactly one of a feeder or substation (`CHECK` constraints).
+- **Connection points:** an asset connects at exactly one of a premise, neighborhood transformer, feeder, or substation; a premise at exactly one of a neighborhood transformer (secondary service) or feeder (primary service); a microgrid at exactly one of a feeder or substation (`CHECK` constraints). Parent links record the normal configuration, not the energized path.
+- **Grid node identity:** inserting a substation, feeder, neighborhood transformer, premise, or microgrid creates its `grid_nodes` row by trigger, of the matching type. `grid_node_id` can't be changed, and `grid_nodes` rejects `UPDATE` and `DELETE`, so a removed node's id stays registered for data that refers to it.
 - **Components and profiles:** `asset_components (hardware_profile_id, technology_type_id)` is a composite foreign key, so a component can only use an energy product of its own technology, never control-only equipment.
 - **Asset power:** an asset's real power can't exceed its kVA rating.
-- **Versioning:** every table above except `outbox_messages` is system-versioned. Each has a `<table>_history` twin with the same columns plus `operation`, `changed_by` (UUID), `actor_type`, and `change_reason`, and a `<table>_as_of(point_in_time)` function. The 12 history tables are left out of the diagram, since each mirrors its main table.
-- **Rules enforced in C# instead:** feeder- and substation-connected assets are `ftm`; an asset has at least one component; microgrid members sit under the microgrid's own feeder.
+- **Versioning:** every table above except `grid_nodes` (never changes) and `outbox_messages` is system-versioned by `topology.enable_versioning`. Each has a `<table>_history` twin with the same columns (matched by name) plus `operation`, `changed_by` (UUID), `actor_type`, and `change_reason`, and a `<table>_as_of(point_in_time)` function. The 13 history tables are left out of the diagram, since each mirrors its main table.
+- **Rules enforced in C# instead:** transformer-, feeder-, and substation-connected assets are `ftm`; an asset has at least one component; microgrid members sit under the microgrid's own feeder.
 
 ## `simulation` schema (Simulation module)
 
@@ -188,15 +216,22 @@ erDiagram
         varchar internal_code UK "hierarchy, assets, assets_with_components"
         varchar display_name
     }
+    run_kinds {
+        int run_kind_id PK
+        varchar internal_code UK "chaos; twin kinds added later"
+        varchar display_name
+    }
     simulation_runs {
         uuid simulation_run_id PK "uuidv7"
         varchar scenario_name
+        int run_kind_id FK
         int status_type_id FK "current status"
         int scope_level_id FK
         varchar scope_root_code "resolved through GridTopology"
         int detail_level_id FK
         timestamptz topology_as_of "topology version used"
         tstzrange simulated_window "simulated time"
+        timestamptz initial_state_as_of "start from measured state; NULL = synthetic"
         jsonb configuration_json "refers to assets by code"
         timestamptz created_at
         timestamptz started_at "NULL while Pending"
@@ -237,14 +272,16 @@ erDiagram
     simulation_run_status_types ||--o{ simulation_run_events : "status entered"
     scope_levels ||--o{ simulation_runs : "scope level"
     detail_levels ||--o{ simulation_runs : "detail level"
+    run_kinds ||--o{ simulation_runs : "kind"
     simulation_runs ||--o{ simulation_run_events : "lifecycle history"
-    simulation_runs ||--o{ simulation_asset_states : "overrides"
+    simulation_runs ||--o{ simulation_asset_states : "starting-state overrides"
 ```
 
 **Rules the diagram can't show:**
 - **Run events are written by trigger** whenever a run is created or changes status, and the table rejects `UPDATE` and `DELETE`. Because events reference their run, a run with events can't be deleted.
-- **Run inputs are fixed once a run leaves `Pending`:** overrides can't be inserted, changed, or deleted, and `topology_as_of` and `created_at` can't change.
-- **Timestamps:** `started_at >= created_at`, `ended_at` after both (a run can fail before it starts), and `topology_as_of <= created_at`.
+- **Run inputs are fixed:** `run_kind_id`, `topology_as_of`, `initial_state_as_of`, and `created_at` can't change after creation, and overrides can't be inserted, changed, or deleted once a run leaves `Pending`.
+- **Overrides are starting state only,** at most one per asset per run. Changes during a run belong in `configuration_json` or a future per-run event table.
+- **Timestamps:** `started_at >= created_at`, `ended_at` after both (a run can fail before it starts), and `topology_as_of` and `initial_state_as_of` are no later than `created_at`.
 
 ## References between modules (no foreign keys)
 
