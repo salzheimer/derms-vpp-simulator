@@ -18,6 +18,13 @@ Asset model:
                      (operating envelopes, node measurements, the future electrical network model)
 Limits: site (PCC) limits live on premises and microgrids; per-system (point of DER connection) limits on assets.
 Dispatch must respect both.
+Asset status: each asset has a physical lifecycle (planned, installed, commissioned, decommissioned, with field dates)
+and a program participation state (not_enrolled, active, suspended, opted_out), both versioned. Decommissioning is a
+lifecycle change that keeps the row; DELETE only corrects records entered in error. Real-time availability (online,
+maintenance) is operational state from telemetry, not stored here.
+Grid state: connectivity and energization (connected_energized, connected_deenergized, islanded, disconnected) change on
+operational timescales, so they are append-only events on grid nodes or assets (grid_state_events), read through
+latest_grid_states. An asset's effective state is derived from its path by the GridTopology module.
 Hierarchy foreign keys record the NORMAL (as-designed) configuration, not the currently energized path. A future
 electrical network model (buses, line segments, switches) is added as new tables that reference these ones, never
 the reverse.
@@ -124,6 +131,55 @@ COMMENT ON TABLE topology.grid_node_types IS 'which table a grid node lives in: 
 COMMENT ON COLUMN topology.grid_node_types.grid_node_type_id IS 'Surrogate key. [INTEGER; NOT NULL; IDENTITY; PK]';
 COMMENT ON COLUMN topology.grid_node_types.internal_code IS 'The node table''s name in the singular, ex. substation, neighborhood_transformer. topology.assign_grid_node looks node types up by this code. [VARCHAR(50); NOT NULL; UNIQUE]';
 COMMENT ON COLUMN topology.grid_node_types.display_name IS 'Human-readable name for UIs and reports. [VARCHAR(100); NOT NULL]';
+
+CREATE TABLE IF NOT EXISTS topology.asset_lifecycle_states
+(
+    asset_lifecycle_state_id    INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    internal_code               VARCHAR(50) NOT NULL UNIQUE,
+    display_name                VARCHAR(100) NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    sys_period                  TSTZRANGE NOT NULL DEFAULT tstzrange(clock_timestamp(), NULL, '[)')
+);
+COMMENT ON TABLE topology.asset_lifecycle_states IS 'physical lifecycle of an asset: planned, installed, commissioned (in service), decommissioned. Only commissioned assets are part of the operating grid';
+COMMENT ON COLUMN topology.asset_lifecycle_states.asset_lifecycle_state_id IS 'Surrogate key. [INTEGER; NOT NULL; IDENTITY; PK]';
+COMMENT ON COLUMN topology.asset_lifecycle_states.internal_code IS 'Stable machine code: planned, installed, commissioned, decommissioned. topology.check_asset_lifecycle uses these codes. [VARCHAR(50); NOT NULL; UNIQUE]';
+COMMENT ON COLUMN topology.asset_lifecycle_states.display_name IS 'Human-readable name for UIs and reports. [VARCHAR(100); NOT NULL]';
+
+CREATE TABLE IF NOT EXISTS topology.participation_states
+(
+    participation_state_id      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    internal_code               VARCHAR(50) NOT NULL UNIQUE,
+    display_name                VARCHAR(100) NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    sys_period                  TSTZRANGE NOT NULL DEFAULT tstzrange(clock_timestamp(), NULL, '[)')
+);
+COMMENT ON TABLE topology.participation_states IS 'whether the VPP may use an asset: not_enrolled, active, suspended, opted_out. Independent of the physical lifecycle, except that only a commissioned asset can be active or suspended';
+COMMENT ON COLUMN topology.participation_states.participation_state_id IS 'Surrogate key. [INTEGER; NOT NULL; IDENTITY; PK]';
+COMMENT ON COLUMN topology.participation_states.internal_code IS 'Stable machine code: not_enrolled, active, suspended, opted_out. topology.check_asset_lifecycle uses these codes. [VARCHAR(50); NOT NULL; UNIQUE]';
+COMMENT ON COLUMN topology.participation_states.display_name IS 'Human-readable name for UIs and reports. [VARCHAR(100); NOT NULL]';
+
+CREATE TABLE IF NOT EXISTS topology.grid_states
+(
+    grid_state_id       INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    internal_code       VARCHAR(50) NOT NULL UNIQUE,
+    display_name        VARCHAR(100) NOT NULL,
+    is_grid_connected   BOOLEAN NOT NULL,
+    is_energized        BOOLEAN NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    sys_period          TSTZRANGE NOT NULL DEFAULT tstzrange(clock_timestamp(), NULL, '[)')
+);
+COMMENT ON TABLE topology.grid_states IS 'connectivity and energization of a grid node or asset, one row per valid combination: connected_energized (normal), connected_deenergized (upstream outage), islanded (energized from local sources), disconnected';
+COMMENT ON COLUMN topology.grid_states.grid_state_id IS 'Surrogate key. [INTEGER; NOT NULL; IDENTITY; PK]';
+COMMENT ON COLUMN topology.grid_states.internal_code IS 'Stable machine code: connected_energized, connected_deenergized, islanded, disconnected. [VARCHAR(50); NOT NULL; UNIQUE]';
+COMMENT ON COLUMN topology.grid_states.display_name IS 'Human-readable name for UIs and reports. [VARCHAR(100); NOT NULL]';
+COMMENT ON COLUMN topology.grid_states.is_grid_connected IS 'TRUE when connected to the utility grid. [BOOLEAN; NOT NULL]';
+COMMENT ON COLUMN topology.grid_states.is_energized IS 'TRUE when energized, from the grid or, when islanded, from local sources. [BOOLEAN; NOT NULL]';
+
+-- Lookup ids by internal_code: column defaults below and module code use them, so seeds never rely on identity values.
+CREATE OR REPLACE FUNCTION topology.asset_lifecycle_state_id(code text) RETURNS integer LANGUAGE sql STABLE AS
+    $$ SELECT asset_lifecycle_state_id FROM topology.asset_lifecycle_states WHERE internal_code = code $$;
+CREATE OR REPLACE FUNCTION topology.participation_state_id(code text) RETURNS integer LANGUAGE sql STABLE AS
+    $$ SELECT participation_state_id FROM topology.participation_states WHERE internal_code = code $$;
 
 
 -- =====================================================================
@@ -315,6 +371,13 @@ CREATE TABLE IF NOT EXISTS topology.assets
     microgrid_id                    BIGINT NULL REFERENCES topology.microgrids (microgrid_id),
     interconnection_type_id         INTEGER NOT NULL REFERENCES topology.interconnection_types (interconnection_type_id),
     control_hardware_profile_id     INTEGER NULL REFERENCES topology.hardware_profiles (hardware_profile_id),
+    -- status: physical lifecycle (with field dates) and program participation; new assets cannot be dispatched
+    asset_lifecycle_state_id        INTEGER NOT NULL DEFAULT topology.asset_lifecycle_state_id('planned')
+                                        REFERENCES topology.asset_lifecycle_states (asset_lifecycle_state_id),
+    participation_state_id          INTEGER NOT NULL DEFAULT topology.participation_state_id('not_enrolled')
+                                        REFERENCES topology.participation_states (participation_state_id),
+    in_service_date                 DATE NULL,
+    decommissioned_date             DATE NULL,
     -- ratings at the connection point (what dispatch uses)
     rated_p_min_kw                  DOUBLE PRECISION NOT NULL,
     rated_p_max_kw                  DOUBLE PRECISION NOT NULL,
@@ -324,9 +387,10 @@ CREATE TABLE IF NOT EXISTS topology.assets
     sys_period                      TSTZRANGE NOT NULL DEFAULT tstzrange(clock_timestamp(), NULL, '[)'),
     CONSTRAINT ck_assets_single_connection CHECK (num_nonnulls(premise_id, neighborhood_transformer_id, feeder_id, substation_id) = 1),
     CONSTRAINT ck_assets_power_bounds      CHECK (rated_p_min_kw <= rated_p_max_kw),
-    CONSTRAINT ck_assets_power_within_kva  CHECK (GREATEST(ABS(rated_p_min_kw), ABS(rated_p_max_kw)) <= rated_kva)
+    CONSTRAINT ck_assets_power_within_kva  CHECK (GREATEST(ABS(rated_p_min_kw), ABS(rated_p_max_kw)) <= rated_kva),
+    CONSTRAINT ck_assets_service_dates     CHECK (decommissioned_date IS NULL OR in_service_date IS NULL OR decommissioned_date >= in_service_date)
 );
-COMMENT ON TABLE topology.assets IS 'a grid-facing controllable resource: everything behind one control interface at one connection point. Makeup (PV only, storage, PV + storage) and energy capacity are derived from asset_components';
+COMMENT ON TABLE topology.assets IS 'a grid-facing controllable resource: everything behind one control interface at one connection point. Makeup (PV only, storage, PV + storage) and energy capacity are derived from asset_components. Assets are decommissioned, not deleted: DELETE only corrects a record entered in error and needs a change reason (topology.check_asset_lifecycle)';
 COMMENT ON COLUMN topology.assets.asset_id IS 'Surrogate key. Other modules refer to assets by this id or by asset_code. [BIGINT; NOT NULL; IDENTITY; PK]';
 COMMENT ON COLUMN topology.assets.asset_code IS 'Stable natural key for seeding and external references; simulation configuration refers to assets by it. [VARCHAR(50); NOT NULL; UNIQUE]';
 COMMENT ON COLUMN topology.assets.premise_id IS 'Premise the asset connects at, behind or across its meter. [BIGINT; NULL; FK topology.premises(premise_id); CHECK exactly one of premise_id, neighborhood_transformer_id, feeder_id, substation_id is set]';
@@ -336,6 +400,10 @@ COMMENT ON COLUMN topology.assets.substation_id IS 'Substation the asset connect
 COMMENT ON COLUMN topology.assets.microgrid_id IS 'Utility-side microgrid the asset belongs to; membership only, the connection point is one of the columns above. NULL = none. [BIGINT; NULL; FK topology.microgrids(microgrid_id)]';
 COMMENT ON COLUMN topology.assets.interconnection_type_id IS 'Meter position of the asset. Assets not connected at a premise are always ftm (enforced in the Asset entity). [INTEGER; NOT NULL; FK topology.interconnection_types(interconnection_type_id)]';
 COMMENT ON COLUMN topology.assets.control_hardware_profile_id IS 'Controller that commands go through; its manufacturer selects the integration adapter. NULL = not recorded. [INTEGER; NULL; FK topology.hardware_profiles(hardware_profile_id)]';
+COMMENT ON COLUMN topology.assets.asset_lifecycle_state_id IS 'Physical lifecycle: planned, installed, commissioned (in service), or decommissioned. New assets start planned. Decommissioned is terminal and keeps the row, so the code stays reserved. Rules on dates and participation are enforced by trigger (topology.check_asset_lifecycle). [INTEGER; NOT NULL; DEFAULT planned; FK topology.asset_lifecycle_states(asset_lifecycle_state_id)]';
+COMMENT ON COLUMN topology.assets.participation_state_id IS 'Whether the VPP may use the asset: not_enrolled, active, suspended, or opted_out. New assets start not_enrolled; only a commissioned asset can be active or suspended. [INTEGER; NOT NULL; DEFAULT not_enrolled; FK topology.participation_states(participation_state_id)]';
+COMMENT ON COLUMN topology.assets.in_service_date IS 'Date the asset entered service in the field (permission to operate), not when it was recorded in RVA, so past periods can be replayed with the assets that existed then. Required when commissioned. NULL = not yet in service, or decommissioned without ever entering service. [DATE; NULL; CHECK <= decommissioned_date]';
+COMMENT ON COLUMN topology.assets.decommissioned_date IS 'Date the asset left service in the field. Set exactly when the asset is decommissioned. [DATE; NULL; CHECK >= in_service_date]';
 COMMENT ON COLUMN topology.assets.rated_p_min_kw IS 'Minimum real power at the connection point in kW; negative = charging or import. What dispatch uses, not the sum of components. [DOUBLE PRECISION; NOT NULL; CHECK <= rated_p_max_kw, and its magnitude <= rated_kva]';
 COMMENT ON COLUMN topology.assets.rated_p_max_kw IS 'Maximum real power at the connection point in kW; positive = discharging or export. What dispatch uses, not the sum of components. [DOUBLE PRECISION; NOT NULL; CHECK >= rated_p_min_kw, and its magnitude <= rated_kva]';
 COMMENT ON COLUMN topology.assets.rated_kva IS 'Apparent power rating at the connection point in kVA; bounds the magnitude of both real power ratings. [DOUBLE PRECISION; NOT NULL; CHECK > 0, and >= the magnitude of rated_p_min_kw and rated_p_max_kw]';
@@ -416,6 +484,118 @@ END $$;
 CREATE OR REPLACE TRIGGER trg_grid_nodes_append_only
     BEFORE UPDATE OR DELETE ON topology.grid_nodes
     FOR EACH ROW EXECUTE FUNCTION topology.reject_change();
+
+
+-- =====================================================================
+-- topology: asset lifecycle rules
+-- =====================================================================
+
+-- Keeps lifecycle state, field dates, and participation consistent, makes decommissioned terminal, and limits DELETE to
+-- corrections: a decommissioned asset is kept for audit and settlement, and any delete needs SET LOCAL rva.change_reason.
+-- Fires before trg_assets_versioning (triggers fire in name order), so a rejected change writes no history.
+CREATE OR REPLACE FUNCTION topology.check_asset_lifecycle() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+    old_state       text;
+    new_state       text;
+    participation   text;
+BEGIN
+    IF TG_OP <> 'INSERT' THEN
+        SELECT internal_code INTO old_state FROM topology.asset_lifecycle_states WHERE asset_lifecycle_state_id = OLD.asset_lifecycle_state_id;
+    END IF;
+
+    IF TG_OP = 'DELETE' THEN
+        IF old_state = 'decommissioned' THEN
+            RAISE EXCEPTION 'asset % is decommissioned and cannot be deleted: decommissioned assets are kept for audit and settlement', OLD.asset_code;
+        END IF;
+        IF coalesce(current_setting('rva.change_reason', true), '') = '' THEN
+            RAISE EXCEPTION 'deleting asset % needs SET LOCAL rva.change_reason: DELETE only corrects a record entered in error; decommission by changing asset_lifecycle_state_id', OLD.asset_code;
+        END IF;
+        RETURN OLD;
+    END IF;
+
+    SELECT internal_code INTO new_state FROM topology.asset_lifecycle_states WHERE asset_lifecycle_state_id = NEW.asset_lifecycle_state_id;
+    SELECT internal_code INTO participation FROM topology.participation_states WHERE participation_state_id = NEW.participation_state_id;
+
+    IF old_state = 'decommissioned' AND new_state <> 'decommissioned' THEN
+        RAISE EXCEPTION 'asset % is decommissioned, which is terminal', NEW.asset_code USING ERRCODE = 'check_violation';
+    END IF;
+    IF new_state IN ('planned', 'installed') AND NEW.in_service_date IS NOT NULL THEN
+        RAISE EXCEPTION 'asset % is %, so it has no in-service date', NEW.asset_code, new_state USING ERRCODE = 'check_violation';
+    END IF;
+    IF new_state = 'commissioned' AND NEW.in_service_date IS NULL THEN
+        RAISE EXCEPTION 'commissioned asset % needs an in_service_date', NEW.asset_code USING ERRCODE = 'check_violation';
+    END IF;
+    IF (new_state = 'decommissioned') <> (NEW.decommissioned_date IS NOT NULL) THEN
+        RAISE EXCEPTION 'asset %: decommissioned_date is set exactly when the asset is decommissioned', NEW.asset_code USING ERRCODE = 'check_violation';
+    END IF;
+    IF participation IN ('active', 'suspended') AND new_state <> 'commissioned' THEN
+        RAISE EXCEPTION 'asset % is %: only a commissioned asset can be % in a program', NEW.asset_code, new_state, participation USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END $$;
+CREATE OR REPLACE TRIGGER trg_assets_lifecycle BEFORE INSERT OR UPDATE OR DELETE ON topology.assets
+    FOR EACH ROW EXECUTE FUNCTION topology.check_asset_lifecycle();
+
+
+-- =====================================================================
+-- topology: grid state events (connectivity and energization)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS topology.grid_state_events
+(
+    grid_state_event_id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    grid_node_id            BIGINT NULL REFERENCES topology.grid_nodes (grid_node_id),
+    asset_id                BIGINT NULL REFERENCES topology.assets (asset_id),
+    grid_state_id           INTEGER NOT NULL REFERENCES topology.grid_states (grid_state_id),
+    occurred_at             TIMESTAMPTZ NOT NULL,
+    recorded_at             TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    reason                  VARCHAR(500) NULL,
+    actor_id                UUID NULL,
+    actor_type              VARCHAR(20) NULL,
+    details                 JSONB NULL,
+    CONSTRAINT ck_grid_state_events_single_target CHECK (num_nonnulls(grid_node_id, asset_id) = 1),
+    CONSTRAINT ck_grid_state_events_not_future    CHECK (occurred_at <= recorded_at)
+);
+COMMENT ON TABLE topology.grid_state_events IS 'append-only history of the connectivity and energization state of grid nodes and assets, ex. a feeder trip, a microgrid islanding, an asset disconnect. A target with no event is in its normal state (connected_energized). Read the state at a point in time through topology.latest_grid_states; effective asset state is derived from the path by the GridTopology module';
+COMMENT ON COLUMN topology.grid_state_events.grid_state_event_id IS 'Surrogate key; increases with insertion order. [BIGINT; NOT NULL; IDENTITY; PK]';
+COMMENT ON COLUMN topology.grid_state_events.grid_node_id IS 'Grid node whose state changed: a substation, feeder, transformer, premise, or microgrid. [BIGINT; NULL; FK topology.grid_nodes(grid_node_id); CHECK exactly one of grid_node_id, asset_id is set]';
+COMMENT ON COLUMN topology.grid_state_events.asset_id IS 'Asset whose own state changed, ex. its disconnect opened. An asset with events cannot be deleted. [BIGINT; NULL; FK topology.assets(asset_id); CHECK exactly one of grid_node_id, asset_id is set]';
+COMMENT ON COLUMN topology.grid_state_events.grid_state_id IS 'State the target entered. [INTEGER; NOT NULL; FK topology.grid_states(grid_state_id)]';
+COMMENT ON COLUMN topology.grid_state_events.occurred_at IS 'When the change happened in the field, as reported; may be earlier than recorded_at for late reports. [TIMESTAMPTZ; NOT NULL; CHECK <= recorded_at]';
+COMMENT ON COLUMN topology.grid_state_events.recorded_at IS 'When RVA recorded the event. Set by trigger; client values are overwritten. As-of reads only see events recorded by then, so they are reproducible. [TIMESTAMPTZ; NOT NULL; DEFAULT clock_timestamp(); CHECK >= occurred_at]';
+COMMENT ON COLUMN topology.grid_state_events.reason IS 'Why the state changed, ex. feeder breaker trip; from the row or SET LOCAL rva.change_reason. NULL = not given. [VARCHAR(500); NULL]';
+COMMENT ON COLUMN topology.grid_state_events.actor_id IS 'Who or what reported the change; from SET LOCAL rva.actor. NULL = unattributed. [UUID; NULL; REF a user or service id (UUIDv7) owned by the Identity module (Phase 3), no FK]';
+COMMENT ON COLUMN topology.grid_state_events.actor_type IS 'Kind of actor: user, service, or system; from SET LOCAL rva.actor_type. NULL = not given. [VARCHAR(20); NULL]';
+COMMENT ON COLUMN topology.grid_state_events.details IS 'Additional event data as JSON, ex. the SCADA point or telemetry message. NULL = none. [JSONB; NULL]';
+CREATE INDEX IF NOT EXISTS ix_grid_state_events_grid_node ON topology.grid_state_events (grid_node_id, occurred_at);
+CREATE INDEX IF NOT EXISTS ix_grid_state_events_asset ON topology.grid_state_events (asset_id, occurred_at);
+
+-- Stamps recorded_at and fills actor and reason from the transaction's SET LOCAL rva.* settings.
+CREATE OR REPLACE FUNCTION topology.record_grid_state_event() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.recorded_at := clock_timestamp();
+    NEW.reason      := coalesce(NEW.reason, NULLIF(current_setting('rva.change_reason', true), ''));
+    NEW.actor_id    := coalesce(NEW.actor_id, NULLIF(current_setting('rva.actor', true), '')::uuid);
+    NEW.actor_type  := coalesce(NEW.actor_type, NULLIF(current_setting('rva.actor_type', true), ''));
+    RETURN NEW;
+END $$;
+CREATE OR REPLACE TRIGGER trg_grid_state_events_record BEFORE INSERT ON topology.grid_state_events
+    FOR EACH ROW EXECUTE FUNCTION topology.record_grid_state_event();
+CREATE OR REPLACE TRIGGER trg_grid_state_events_append_only BEFORE UPDATE OR DELETE ON topology.grid_state_events
+    FOR EACH ROW EXECUTE FUNCTION topology.reject_change();
+
+-- The latest state of every node and asset that has events, as known at a point in time: events that happened and
+-- were recorded by then. Targets with no row are in their normal state (connected_energized).
+CREATE OR REPLACE FUNCTION topology.latest_grid_states(point_in_time timestamptz)
+RETURNS TABLE (grid_node_id bigint, asset_id bigint, grid_state_id integer, occurred_at timestamptz)
+LANGUAGE sql STABLE AS $$
+    SELECT DISTINCT ON (e.grid_node_id, e.asset_id) e.grid_node_id, e.asset_id, e.grid_state_id, e.occurred_at
+    FROM topology.grid_state_events e
+    WHERE e.occurred_at <= point_in_time AND e.recorded_at <= point_in_time
+    ORDER BY e.grid_node_id, e.asset_id, e.occurred_at DESC, e.grid_state_event_id DESC
+$$;
 
 
 -- =====================================================================
@@ -616,7 +796,7 @@ END $$;
 SELECT topology.enable_versioning(t)
 FROM unnest(ARRAY[
     'technology_types', 'protocol_mappings', 'interconnection_types', 'customer_segments', 'grid_node_types',
-    'hardware_profiles', 'substations', 'feeders', 'neighborhood_transformers', 'premises', 'microgrids', 'assets',
+    'asset_lifecycle_states', 'participation_states', 'grid_states', 'hardware_profiles', 'substations', 'feeders', 'neighborhood_transformers', 'premises', 'microgrids', 'assets',
     'asset_components']) AS t;
 
 
@@ -648,6 +828,27 @@ INSERT INTO topology.grid_node_types (internal_code, display_name) VALUES
 ('neighborhood_transformer', 'Neighborhood Transformer'),
 ('premise',                  'Premise'),
 ('microgrid',                'Microgrid')
+ON CONFLICT (internal_code) DO NOTHING;
+
+INSERT INTO topology.asset_lifecycle_states (internal_code, display_name) VALUES
+('planned',        'Planned'),
+('installed',      'Installed'),
+('commissioned',   'Commissioned'),
+('decommissioned', 'Decommissioned')
+ON CONFLICT (internal_code) DO NOTHING;
+
+INSERT INTO topology.participation_states (internal_code, display_name) VALUES
+('not_enrolled', 'Not enrolled'),
+('active',       'Active'),
+('suspended',    'Suspended'),
+('opted_out',    'Opted out')
+ON CONFLICT (internal_code) DO NOTHING;
+
+INSERT INTO topology.grid_states (internal_code, display_name, is_grid_connected, is_energized) VALUES
+('connected_energized',   'Connected, energized',   TRUE,  TRUE),
+('connected_deenergized', 'Connected, de-energized', TRUE,  FALSE),
+('islanded',              'Islanded',               FALSE, TRUE),
+('disconnected',          'Disconnected',           FALSE, FALSE)
 ON CONFLICT (internal_code) DO NOTHING;
 
 
@@ -713,7 +914,8 @@ INSERT INTO simulation.scope_levels (internal_code, display_name) VALUES
 ('substation',               'Substation'),
 ('feeder',                   'Feeder'),
 ('neighborhood_transformer', 'Neighborhood Transformer'),
-('premise',                  'Premise')
+('premise',                  'Premise'),
+('microgrid',                'Microgrid')
 ON CONFLICT (internal_code) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS simulation.detail_levels
@@ -774,23 +976,24 @@ CREATE TABLE IF NOT EXISTS simulation.simulation_runs
     CONSTRAINT ck_simulation_runs_started CHECK (started_at IS NULL OR started_at >= created_at),
     CONSTRAINT ck_simulation_runs_ended   CHECK (ended_at IS NULL OR (ended_at >= created_at AND (started_at IS NULL OR ended_at >= started_at))),
     CONSTRAINT ck_simulation_runs_topology_as_of CHECK (topology_as_of <= created_at),
-    CONSTRAINT ck_simulation_runs_initial_state_as_of CHECK (initial_state_as_of IS NULL OR initial_state_as_of <= created_at)
+    CONSTRAINT ck_simulation_runs_initial_state_as_of CHECK (initial_state_as_of IS NULL OR initial_state_as_of <= created_at),
+    CONSTRAINT ck_simulation_runs_window  CHECK (NOT isempty(simulated_window) AND NOT lower_inf(simulated_window))
 );
-COMMENT ON TABLE simulation.simulation_runs IS 'one simulation run: what it is for, which part of the grid it covers and in how much detail, which topology version and starting state it uses, and its current status. Status history is in simulation_run_events; runs are never deleted';
+COMMENT ON TABLE simulation.simulation_runs IS 'one simulation run: what it is for, which part of the grid it covers and in how much detail, which topology version and starting state it uses, and its current status. Scope and kind are fixed at creation; window, configuration, and overrides only while Pending. Status moves Pending -> Running -> Completed, or to Failed from Pending or Running (simulation.check_run_lifecycle). Status history is in simulation_run_events; runs are never deleted';
 COMMENT ON COLUMN simulation.simulation_runs.simulation_run_id IS 'Run id, time-ordered (UUIDv7). [UUID; NOT NULL; DEFAULT uuidv7(); PK]';
 COMMENT ON COLUMN simulation.simulation_runs.scenario_name IS 'Human-readable scenario name. [VARCHAR(100); NOT NULL]';
 COMMENT ON COLUMN simulation.simulation_runs.run_kind_id IS 'What the run is for, ex. chaos. Fixed at creation by trigger. [INTEGER; NOT NULL; FK simulation.run_kinds(run_kind_id)]';
-COMMENT ON COLUMN simulation.simulation_runs.status_type_id IS 'Current status. Every change is recorded in simulation_run_events by trigger, with the actor and reason from SET LOCAL rva.*. [INTEGER; NOT NULL; FK simulation.simulation_run_status_types(status_type_id)]';
-COMMENT ON COLUMN simulation.simulation_runs.scope_level_id IS 'Grid level the run''s scope starts from. [INTEGER; NOT NULL; FK simulation.scope_levels(scope_level_id)]';
-COMMENT ON COLUMN simulation.simulation_runs.scope_root_code IS 'Code of the grid node the scope starts from, at scope_level_id, ex. PDX-SUB-ARBOR. [VARCHAR(50); NOT NULL; REF a GridTopology node code (substation_code, feeder_code, ...), validated through IGridTopologyQueries, no cross-module FK]';
-COMMENT ON COLUMN simulation.simulation_runs.detail_level_id IS 'How much of the scoped topology the run loads. [INTEGER; NOT NULL; FK simulation.detail_levels(detail_level_id)]';
+COMMENT ON COLUMN simulation.simulation_runs.status_type_id IS 'Current status. A run is created Pending and moves Pending -> Running -> Completed, or to Failed from Pending or Running; entering Failed needs SET LOCAL rva.change_reason (simulation.check_run_lifecycle). Every change is recorded in simulation_run_events by trigger, with the actor and reason from SET LOCAL rva.*. [INTEGER; NOT NULL; FK simulation.simulation_run_status_types(status_type_id)]';
+COMMENT ON COLUMN simulation.simulation_runs.scope_level_id IS 'Grid level the run''s scope starts from. Fixed at creation by trigger. [INTEGER; NOT NULL; FK simulation.scope_levels(scope_level_id)]';
+COMMENT ON COLUMN simulation.simulation_runs.scope_root_code IS 'Code of the grid node the scope starts from, at scope_level_id, ex. PDX-SUB-ARBOR or a microgrid_code. Fixed at creation by trigger. [VARCHAR(50); NOT NULL; REF a GridTopology node code (substation_code, feeder_code, ...), validated through IGridTopologyQueries, no cross-module FK]';
+COMMENT ON COLUMN simulation.simulation_runs.detail_level_id IS 'How much of the scoped topology the run loads. Fixed at creation by trigger. [INTEGER; NOT NULL; FK simulation.detail_levels(detail_level_id)]';
 COMMENT ON COLUMN simulation.simulation_runs.topology_as_of IS 'Topology version the run uses (read through the topology _as_of functions), so the run can be reproduced. Set to created_at by trigger when not given; fixed at creation. [TIMESTAMPTZ; NOT NULL; CHECK <= created_at]';
-COMMENT ON COLUMN simulation.simulation_runs.simulated_window IS 'Simulated time the run covers, ex. a replayed January storm; independent of wall-clock execution. NULL = not tied to a calendar period. [TSTZRANGE; NULL]';
+COMMENT ON COLUMN simulation.simulation_runs.simulated_window IS 'Simulated time the run covers, ex. a replayed January storm; independent of wall-clock execution. Must be non-empty with a start; the end may be open. Can change only while Pending. NULL = not tied to a calendar period. [TSTZRANGE; NULL; CHECK not empty and has a lower bound]';
 COMMENT ON COLUMN simulation.simulation_runs.initial_state_as_of IS 'Start from measured asset state at this moment. NULL = synthetic start (asset defaults plus overrides). Fixed at creation. [TIMESTAMPTZ; NULL; CHECK <= created_at]';
-COMMENT ON COLUMN simulation.simulation_runs.configuration_json IS 'Scenario rules (faults, switching, load steps); refers to assets by asset_code. NULL = no rules. [JSONB; NULL]';
+COMMENT ON COLUMN simulation.simulation_runs.configuration_json IS 'Scenario rules (faults, switching, load steps); refers to assets by asset_code. Can change only while Pending. NULL = no rules. [JSONB; NULL]';
 COMMENT ON COLUMN simulation.simulation_runs.created_at IS 'When the run was created. Set by trigger and never changes; client values are overwritten. [TIMESTAMPTZ; NOT NULL; DEFAULT clock_timestamp(); CHECK not after started_at, ended_at, and no earlier than topology_as_of and initial_state_as_of]';
-COMMENT ON COLUMN simulation.simulation_runs.started_at IS 'When the run started. NULL while Pending. [TIMESTAMPTZ; NULL; CHECK >= created_at]';
-COMMENT ON COLUMN simulation.simulation_runs.ended_at IS 'When the run Completed or Failed; a run can fail before it starts. NULL while not ended. [TIMESTAMPTZ; NULL; CHECK >= created_at and >= started_at]';
+COMMENT ON COLUMN simulation.simulation_runs.started_at IS 'When the run started. NULL while Pending; set once Running (simulation.check_run_lifecycle). [TIMESTAMPTZ; NULL; CHECK >= created_at]';
+COMMENT ON COLUMN simulation.simulation_runs.ended_at IS 'When the run Completed or Failed; a run can fail before it starts. NULL while Pending or Running, set once ended (simulation.check_run_lifecycle). [TIMESTAMPTZ; NULL; CHECK >= created_at and >= started_at]';
 COMMENT ON COLUMN simulation.simulation_runs.updated_at IS 'When the row last changed. Set by trigger. [TIMESTAMPTZ; NOT NULL; DEFAULT clock_timestamp()]';
 CREATE INDEX IF NOT EXISTS ix_simulation_runs_status_type_id ON simulation.simulation_runs (status_type_id);
 CREATE INDEX IF NOT EXISTS ix_simulation_runs_run_kind_id ON simulation.simulation_runs (run_kind_id);
@@ -842,7 +1045,9 @@ COMMENT ON COLUMN simulation.simulation_asset_states.state_of_charge_pct IS 'Sta
 COMMENT ON COLUMN simulation.simulation_asset_states.created_at IS 'When the override was added. [TIMESTAMPTZ; NOT NULL; DEFAULT clock_timestamp()]';
 
 -- Run defaults and bookkeeping: topology_as_of defaults to created_at; updated_at tracks every change.
--- What a run is and what it starts from (run_kind_id, topology_as_of, initial_state_as_of) are fixed at creation.
+-- What a run is, what it covers, and what it starts from (kind, scope, topology_as_of, initial_state_as_of) are fixed at
+-- creation; the simulated window and configuration are fixed once the run leaves Pending. Changes are ignored, as for
+-- created_at, so a run can be reproduced exactly.
 CREATE OR REPLACE FUNCTION simulation.simulation_runs_bookkeeping() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -855,6 +1060,13 @@ BEGIN
         NEW.run_kind_id         := OLD.run_kind_id;     -- a run's inputs are fixed at creation
         NEW.topology_as_of      := OLD.topology_as_of;
         NEW.initial_state_as_of := OLD.initial_state_as_of;
+        NEW.scope_level_id      := OLD.scope_level_id;
+        NEW.scope_root_code     := OLD.scope_root_code;
+        NEW.detail_level_id     := OLD.detail_level_id;
+        IF OLD.status_type_id IS DISTINCT FROM (SELECT status_type_id FROM simulation.simulation_run_status_types WHERE name = 'Pending') THEN
+            NEW.simulated_window   := OLD.simulated_window;
+            NEW.configuration_json := OLD.configuration_json;
+        END IF;
         NEW.updated_at          := clock_timestamp();
     END IF;
     RETURN NEW;
@@ -862,6 +1074,46 @@ END $$;
 CREATE OR REPLACE TRIGGER trg_simulation_runs_bookkeeping
     BEFORE INSERT OR UPDATE ON simulation.simulation_runs
     FOR EACH ROW EXECUTE FUNCTION simulation.simulation_runs_bookkeeping();
+
+-- Lifecycle rules, also enforced by the SimulationRun entity: a run is created Pending; it moves Pending -> Running ->
+-- Completed, or to Failed from Pending or Running; Completed and Failed are terminal. started_at is set exactly once the
+-- run has started (Running, Completed, or Failed after starting) and ended_at exactly when it has ended. Entering Failed
+-- needs SET LOCAL rva.change_reason, so every failure is recorded with its cause. Fires after
+-- trg_simulation_runs_bookkeeping (triggers fire in name order).
+CREATE OR REPLACE FUNCTION simulation.check_run_lifecycle() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+    old_status  text;
+    new_status  text;
+BEGIN
+    SELECT name INTO new_status FROM simulation.simulation_run_status_types WHERE status_type_id = NEW.status_type_id;
+
+    IF TG_OP = 'INSERT' THEN
+        IF new_status <> 'Pending' THEN
+            RAISE EXCEPTION 'a run is created Pending, not %', new_status USING ERRCODE = 'check_violation';
+        END IF;
+    ELSE
+        SELECT name INTO old_status FROM simulation.simulation_run_status_types WHERE status_type_id = OLD.status_type_id;
+        IF new_status <> old_status AND (old_status, new_status) NOT IN
+               (('Pending', 'Running'), ('Pending', 'Failed'), ('Running', 'Completed'), ('Running', 'Failed')) THEN
+            RAISE EXCEPTION 'run %: % -> % is not a valid transition', NEW.simulation_run_id, old_status, new_status USING ERRCODE = 'check_violation';
+        END IF;
+        IF new_status = 'Failed' AND old_status <> 'Failed' AND coalesce(current_setting('rva.change_reason', true), '') = '' THEN
+            RAISE EXCEPTION 'run % cannot enter Failed without SET LOCAL rva.change_reason', NEW.simulation_run_id USING ERRCODE = 'check_violation';
+        END IF;
+    END IF;
+
+    IF (NEW.started_at IS NOT NULL) <> (new_status IN ('Running', 'Completed') OR (new_status = 'Failed' AND NEW.started_at IS NOT NULL)) THEN
+        RAISE EXCEPTION 'run %: started_at is set exactly once the run has started (status %)', NEW.simulation_run_id, new_status USING ERRCODE = 'check_violation';
+    END IF;
+    IF (NEW.ended_at IS NOT NULL) <> (new_status IN ('Completed', 'Failed')) THEN
+        RAISE EXCEPTION 'run %: ended_at is set exactly when the run has ended (status %)', NEW.simulation_run_id, new_status USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END $$;
+CREATE OR REPLACE TRIGGER trg_simulation_runs_lifecycle
+    BEFORE INSERT OR UPDATE ON simulation.simulation_runs
+    FOR EACH ROW EXECUTE FUNCTION simulation.check_run_lifecycle();
 
 -- Every status a run enters is recorded as an event, so the history cannot be skipped by application code.
 CREATE OR REPLACE FUNCTION simulation.record_run_event() RETURNS trigger
@@ -951,7 +1203,7 @@ DECLARE
 BEGIN
     FOREACH t IN ARRAY ARRAY[
         'technology_types', 'protocol_mappings', 'interconnection_types', 'customer_segments', 'grid_node_types',
-        'hardware_profiles', 'substations', 'feeders', 'neighborhood_transformers', 'premises', 'microgrids', 'assets',
+        'asset_lifecycle_states', 'participation_states', 'grid_states', 'hardware_profiles', 'substations', 'feeders', 'neighborhood_transformers', 'premises', 'microgrids', 'assets',
         'asset_components']
     LOOP
         PERFORM topology.check_versioning(t);

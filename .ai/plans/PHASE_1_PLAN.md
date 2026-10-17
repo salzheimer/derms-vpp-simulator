@@ -38,15 +38,18 @@ Delivered in parts, one branch and pull request each:
 |---|---|---|
 | `p1-s00a` | Project skeleton with the allowed references, and the architecture test suite | Done (PR #3) |
 | `p1-s00b` | Host wiring: module registration, Serilog, the in-process event publisher, configurable database names / Redis prefix / MQTT topic root | Not started |
-| `p1-s00c` | Dockerfiles for `Rva.Host` (and the simulator and sidecar profiles) and a CI workflow running build, test, and the schema smoke test | Not started |
-| `p1-s00d` | Digital twin readiness in `rva_core`: grid node identity, wider connection points, column-safe versioning, simulation run kinds; plan and doc rules (see Cross-cutting decisions) | In progress |
+| `p1-s00c` | Dockerfiles for `Rva.Host` (and the simulator and sidecar profiles) and a CI workflow running build and test (the database tests have their own workflow from `p1-s00f`) | Not started |
+| `p1-s00d` | Digital twin readiness in `rva_core`: grid node identity, wider connection points, column-safe versioning, simulation run kinds; plan and doc rules (see Cross-cutting decisions) | Done (PR #7) |
+| `p1-s00e` | Self-describing schema: table and column comments throughout `rva_core` (generated for history tables), the SQL DDL standard (`.ai/rules/sql-ddl.md`), and a catalog-based DDL lint (`infrastructure/postgres/tests/ddl_lint.sql`) | Done (PR #8) |
+| `p1-s00f` | Executable schema tests: pgTAP suite for the GridTopology and Simulation scenarios (`docs/architecture/model-validation-scenarios.md`), reusable fixtures A–D, the smoke test ported to pgTAP, a test runner and CI job; asset lifecycle, program participation, and grid state events in `rva_core` (see `.ai/plans/P1_S00F_DDL_TESTS_PLAN.md`) | In progress |
 
 * **Solution:** Add `Rva.Host`, `Rva.SharedKernel`, and the `Rva.Modules.<X>` / `Rva.Modules.<X>.Contracts` project pairs to `VppAggregator.slnx`, with only the references allowed by the rule.
 * **Host (`Rva.Host`):** ASP.NET Core host — HTTP endpoints plus background workers (e.g. MQTT ingestion). Each module exposes `Add<X>Module(IServiceCollection, IConfiguration)` and `Map<X>Endpoints(IEndpointRouteBuilder)`; the host calls these and nothing else module-specific. Serilog configured here.
 * **Shared kernel (`Rva.SharedKernel`):** Starts with only the types Step 1's contracts need; anything else is added when a second module needs it (see the rule's section 5). Expected over Phase 1: typed IDs (`AssetId`, `GridNodeId`, `SubstationId`, `FeederId`, `TransformerId`, `PremiseId`, `MicrogridId`, `SimulationRunId`), units (`Kilowatts`, `KilowattHours`, `KilovoltAmperes`, `Kilovars`, `Volts`, `Percentage`), reference codes (`TechnologyTypeCode`, `InterconnectionTypeCode`, `ProtocolStandard`), `Result`/`Result<T>`/`Error`, `IIntegrationEvent`.
 * **Integration events:** An in-process event publisher in `Rva.Host` (e.g. a `Channel`-backed dispatcher) that modules publish to via an abstraction; handlers live in the consuming module.
 * **Architecture tests:** Reference every backend project from `tests/Rva.ArchitectureTests` and implement the full suite listed in the rule's section 8.
-* **Schema smoke test:** `infrastructure/postgres/tests/rva_core_smoke_test.sql` exercises versioning, as-of reads, actor/reason capture, key constraints, and the simulation triggers (see `.ai/scripts/verify.md`).
+* **Schema tests:** the pgTAP suite in `infrastructure/postgres/tests/pgtap/` (run by `infrastructure/postgres/tests/run_tests.sh`) exercises versioning, as-of reads, actor/reason capture, key constraints, the simulation triggers, and each validation scenario (`p1-s00f`; see `.ai/scripts/verify.md`).
+* **DDL lint:** `infrastructure/postgres/tests/ddl_lint.sql` checks the built schema against `.ai/rules/sql-ddl.md`; `run_tests.sh` runs it before the pgTAP suite, locally and in CI.
 * **Infrastructure:** `docker compose up` brings up `rva-core-db`, `rva-telemetry-db`, Mosquitto (with a mounted `mosquitto.conf`), and Redis on one network, and runs each database's init script.
 
 ---
@@ -72,7 +75,8 @@ Delivered in parts, one branch and pull request each:
   * **Grid node identity:** the four levels and `Microgrid` also carry a `GridNodeId` (`long`) from `topology.grid_nodes`, a registry with one id space across levels. A trigger assigns it on insert and it never changes; a registry row outlives its node, so node-keyed data keeps a stable reference. They may inherit a module-internal abstract `GridNode` base class (`Id`, `GridNodeId`, `Code`, `Location`) for level-agnostic code. It is **not** mapped as EF Core inheritance: each level keeps its own table and `IDENTITY` primary key, and `GridNodeId` is database-generated (never written by EF). `GridNodeId` is the reference other modules use for node-keyed data.
   * **`Premise`:** `CustomerSegmentId`, `ServiceCapacityKva` (import limit), `ExportLimitKw` (site interconnection limit; `0` = non-export), `CanIsland`.
   * **`Microgrid`:** `Id` (`long`), `Code`, connection at exactly one of `FeederId` / `SubstationId`, `CanIsland`, `ImportLimitKw`, `ExportLimitKw`.
-  * **`Asset`** (aggregate root, owns its components): `Id` (`long`), `Code`, connection at exactly one of `PremiseId` / `NeighborhoodTransformerId` / `FeederId` / `SubstationId`, `MicrogridId` (`long?`), `InterconnectionTypeId`, `ControlHardwareProfileId`, `RatedPMinKw` / `RatedPMaxKw` (negative = charging/import), `RatedKva`, `ExportLimitKw` (per system). Makeup (PV only, storage, PV + storage) and energy capacity are derived from its components.
+  * **`Asset`** (aggregate root, owns its components): `Id` (`long`), `Code`, connection at exactly one of `PremiseId` / `NeighborhoodTransformerId` / `FeederId` / `SubstationId`, `MicrogridId` (`long?`), `InterconnectionTypeId`, `ControlHardwareProfileId`, `RatedPMinKw` / `RatedPMaxKw` (negative = charging/import), `RatedKva`, `ExportLimitKw` (per system), `LifecycleState` (planned → installed → commissioned → decommissioned, with field dates `InServiceDate` / `DecommissionedDate`), and `ParticipationState` (not enrolled, active, suspended, opted out). Makeup (PV only, storage, PV + storage) and energy capacity are derived from its components. Decommissioning is a lifecycle change that keeps the asset; deleting is only for correcting a record entered in error.
+  * **Grid state:** connectivity and energization (connected and energized, connected and de-energized, islanded, disconnected) are append-only events on grid nodes and assets, with field and recorded times. GridTopology derives each asset's effective state from its path; dispatch eligibility is commissioned, active, energized, and available (availability from telemetry).
   * **`AssetComponent`:** `TechnologyTypeId`, `HardwareProfileId`, `UnitCount`, installed `RatedKw` (PV kW-dc or battery power) and `RatedKwh`. Never dispatched directly.
 * **Invariants enforced in the entities** (they need cross-table checks the database cannot express):
   * Transformer-, feeder-, or substation-connected assets are `ftm`.
@@ -95,8 +99,8 @@ Delivered in parts, one branch and pull request each:
   * **B:** non-export C&I warehouse with separate PV and battery systems (`premises.export_limit_kw = 0`, behind-the-meter microgrid via `can_island`).
   * **C:** residential home with three Powerwall 3s and a 10 kW site export cap (large equipment, still `residential`).
   * **D:** community microgrid on a feeder — 20 homes (Tesla DC-coupled, Enphase single-gateway, PV-only, and a mixed-vendor home with two assets), a school, and a feeder-connected community battery — including a neighborhood transformer whose connected inverter capacity exceeds its rating.
-* **Features:** `RegisterAsset`, `GetAsset`, `GetSubstationTree`, `GetTopologySnapshot(scopeRoot, detail, asOf)` (bulk export of a subtree at a chosen level of detail and topology version, used by `Rva.Simulator`).
-* **Contracts:** `IGridTopologyQueries` (`GetAsset(id, asOf?)`, `GetAssetsBySubstation`, `GetConstraintPath(assetId, asOf?)`, `GetTopologySnapshot(scopeRoot, detail, asOf)`, `ResolveTechnologyType`, `GetProtocolMappings`), `AssetSnapshot` (connection point and substation, ratings, site and microgrid limits, makeup, control manufacturer, `ValidFrom`), `ProtocolMappingSnapshot`, and the events `AssetRegistered`, `AssetUpdated`, `AssetDecommissioned`.
+* **Features:** `RegisterAsset`, `ChangeAssetLifecycle` (commission, decommission), `ChangeParticipation`, `RecordGridStateEvent`, `GetAsset`, `GetSubstationTree`, `GetTopologySnapshot(scopeRoot, detail, asOf)` (bulk export of a subtree at a chosen level of detail and topology version, used by `Rva.Simulator`).
+* **Contracts:** `IGridTopologyQueries` (`GetAsset(id, asOf?)`, `GetAssetsBySubstation`, `GetConstraintPath(assetId, asOf?)`, `GetGridState(assetId, asOf?)`, `GetTopologySnapshot(scopeRoot, detail, asOf)`, `ResolveTechnologyType`, `GetProtocolMappings`), `AssetSnapshot` (connection point and substation, ratings, site and microgrid limits, makeup, control manufacturer, lifecycle and participation state, `ValidFrom`), `ProtocolMappingSnapshot`, and the events `AssetRegistered`, `AssetUpdated`, `AssetDecommissioned`.
   * `GetConstraintPath` returns the nodes whose limits apply to an asset, from its connection point up to the substation, each with its `GridNodeId`, level, code, and ratings, plus the site and microgrid limits. Phase 1 derives it from the hierarchy; a later network model can derive it from the energized path. Constraint and dispatch code uses it instead of walking parent IDs.
 
 ---
@@ -105,7 +109,7 @@ Delivered in parts, one branch and pull request each:
 
 **Goal:** Own the simulation run ledger and per-run asset overrides. This module does **not** run the Chaos Engine — `Rva.Simulator` does (Step 4).
 
-* **Domain:** `SimulationRun` (lifecycle `Pending` → `Running` → `Completed` | `Failed`, with transitions enforced by the entity; a `RunKind`, `chaos` in Phase 1), `SimulationAssetState` (per-run override of an asset's starting availability, power bounds, and state of charge).
+* **Domain:** `SimulationRun` (lifecycle `Pending` → `Running` → `Completed` | `Failed`, with transitions enforced by the entity and backed by a database trigger; scope fixed at creation, window and configuration fixed once it leaves `Pending`; can be scoped to a microgrid; a `RunKind`, `chaos` in Phase 1), `SimulationAssetState` (per-run override of an asset's starting availability, power bounds, and state of charge).
 * **Change tracking (append-only events):** simulation data is things that happen, so it is recorded as events rather than versioned:
   * every status a run enters is written to `simulation_run_events` by trigger, with the reason and actor from `SET LOCAL`; the table rejects updates and deletes, and a run with events cannot be deleted
   * run inputs (scope, `topology_as_of`, overrides) are fixed once a run leaves `Pending`, enforced in the database, so a run can be replayed exactly
@@ -151,7 +155,7 @@ Delivered in parts, one branch and pull request each:
 ## Phase 1 Definition of Done
 
 * [ ] `dotnet build` and `dotnet test` pass, including the full architecture test suite.
-* [ ] `docker compose up` starts both databases, Mosquitto, and Redis, and runs the init scripts cleanly; the schema smoke test passes.
+* [ ] `docker compose up` starts both databases, Mosquitto, and Redis, and runs the init scripts cleanly; `infrastructure/postgres/tests/run_tests.sh` passes.
 * [ ] Seed scripts can be re-run without duplicating rows (natural-code idempotency), and the reference scenarios A–D load with all database constraints passing.
 * [ ] GridTopology serves the topology and publishes asset events; Telemetry's `known_assets` stays in sync.
 * [ ] Simulation runs move through their lifecycle via the API, with overrides validated against GridTopology.
