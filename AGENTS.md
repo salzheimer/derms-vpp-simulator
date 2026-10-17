@@ -26,6 +26,7 @@ Full detail: `.ai/rules/csharp-monolith.md` and `.ai/rules/python-sidecar.md`.
 
 - `.ai/rules/agent-workflow.md` — human checkpoints, plan-step scope, branch/PR workflow for agents.
 - `.ai/rules/csharp-monolith.md` — C# module layout, conventions, sovereignty principle.
+- `.ai/rules/sql-ddl.md` — SQL DDL standard: required table/column comments and their checked format, naming, types; read before writing or changing any SQL.
 - `.ai/rules/python-sidecar.md` — sidecar conventions, the Consultant constraint.
 - `.ai/rules/domain-glossary.md` — domain terms (DER, `Asset`, `GridNode` hierarchy, `TechnologyType`, etc.).
 - `.ai/rules/security.md` — audit, RBAC, NERC CIP, Zero Trust, geospatial dispatch rule.
