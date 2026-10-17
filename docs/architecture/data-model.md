@@ -48,10 +48,45 @@ erDiagram
         timestamptz created_at
         tstzrange sys_period
     }
+    asset_lifecycle_states {
+        int asset_lifecycle_state_id PK
+        varchar internal_code UK "planned, installed, commissioned, decommissioned"
+        varchar display_name
+        timestamptz created_at
+        tstzrange sys_period
+    }
+    participation_states {
+        int participation_state_id PK
+        varchar internal_code UK "not_enrolled, active, suspended, opted_out"
+        varchar display_name
+        timestamptz created_at
+        tstzrange sys_period
+    }
+    grid_states {
+        int grid_state_id PK
+        varchar internal_code UK "connected_energized, connected_deenergized, islanded, disconnected"
+        varchar display_name
+        boolean is_grid_connected
+        boolean is_energized
+        timestamptz created_at
+        tstzrange sys_period
+    }
     grid_nodes {
         bigint grid_node_id PK "one id space across node levels"
         int grid_node_type_id FK
         timestamptz created_at
+    }
+    grid_state_events {
+        bigint grid_state_event_id PK
+        bigint grid_node_id FK "exactly one of node, asset"
+        bigint asset_id FK
+        int grid_state_id FK
+        timestamptz occurred_at "field time"
+        timestamptz recorded_at "set by trigger"
+        varchar reason
+        uuid actor_id
+        varchar actor_type
+        jsonb details
     }
     hardware_profiles {
         int hardware_profile_id PK
@@ -134,6 +169,10 @@ erDiagram
         bigint microgrid_id FK "optional membership"
         int interconnection_type_id FK
         int control_hardware_profile_id FK "control interface"
+        int asset_lifecycle_state_id FK "default planned"
+        int participation_state_id FK "default not_enrolled"
+        date in_service_date "field date"
+        date decommissioned_date "field date"
         double rated_p_min_kw "negative = charging"
         double rated_p_max_kw
         double rated_kva
@@ -187,6 +226,11 @@ erDiagram
     premises |o--o{ assets : "connects"
     microgrids |o--o{ assets : "groups"
     assets ||--o{ asset_components : "made of"
+    asset_lifecycle_states ||--o{ assets : "lifecycle"
+    participation_states ||--o{ assets : "participation"
+    grid_states ||--o{ grid_state_events : "state entered"
+    grid_nodes |o--o{ grid_state_events : "node state"
+    assets |o--o{ grid_state_events : "asset state"
 ```
 
 **Rules the diagram can't show:**
@@ -194,7 +238,9 @@ erDiagram
 - **Grid node identity:** inserting a substation, feeder, neighborhood transformer, premise, or microgrid creates its `grid_nodes` row by trigger, of the matching type. `grid_node_id` can't be changed, and `grid_nodes` rejects `UPDATE` and `DELETE`, so a removed node's id stays registered for data that refers to it.
 - **Components and profiles:** `asset_components (hardware_profile_id, technology_type_id)` is a composite foreign key, so a component can only use an energy product of its own technology, never control-only equipment.
 - **Asset power:** an asset's real power can't exceed its kVA rating.
-- **Versioning:** every table above except `grid_nodes` (never changes) and `outbox_messages` is system-versioned by `topology.enable_versioning`. Each has a `<table>_history` twin with the same columns (matched by name) plus `operation`, `changed_by` (UUID), `actor_type`, and `change_reason`, and a `<table>_as_of(point_in_time)` function. The 13 history tables are left out of the diagram, since each mirrors its main table.
+- **Asset lifecycle and participation (`topology.check_asset_lifecycle`):** a commissioned asset has an `in_service_date`; a planned or installed one has none; `decommissioned_date` is set exactly when decommissioned, and not before `in_service_date`. Decommissioned is terminal. Only a commissioned asset can be `active` or `suspended`. Assets are decommissioned, not deleted: a decommissioned asset can't be deleted (so its code stays reserved), and a `DELETE` (a correction) needs `rva.change_reason`.
+- **Grid state events:** append-only (`UPDATE` and `DELETE` are rejected); `recorded_at`, actor, and reason are stamped by trigger; `occurred_at` can't be after `recorded_at`. `topology.latest_grid_states(point_in_time)` returns each target's latest state among events that happened and were recorded by then; a target with no event is `connected_energized`. Deriving an asset's effective state from its path is GridTopology's job.
+- **Versioning:** every table above except `grid_nodes` (never changes), `grid_state_events` (append-only), and `outbox_messages` is system-versioned by `topology.enable_versioning`. Each has a `<table>_history` twin with the same columns (matched by name) plus `operation`, `changed_by` (UUID), `actor_type`, and `change_reason`, and a `<table>_as_of(point_in_time)` function. The 16 history tables are left out of the diagram, since each mirrors its main table.
 - **Rules enforced in C# instead:** transformer-, feeder-, and substation-connected assets are `ftm`; an asset has at least one component; microgrid members sit under the microgrid's own feeder.
 
 ## `simulation` schema (Simulation module)
@@ -208,7 +254,7 @@ erDiagram
     }
     scope_levels {
         int scope_level_id PK
-        varchar internal_code UK "substation, feeder, neighborhood_transformer, premise"
+        varchar internal_code UK "substation, feeder, neighborhood_transformer, premise, microgrid"
         varchar display_name
     }
     detail_levels {
@@ -279,9 +325,10 @@ erDiagram
 
 **Rules the diagram can't show:**
 - **Run events are written by trigger** whenever a run is created or changes status, and the table rejects `UPDATE` and `DELETE`. Because events reference their run, a run with events can't be deleted.
-- **Run inputs are fixed:** `run_kind_id`, `topology_as_of`, `initial_state_as_of`, and `created_at` can't change after creation, and overrides can't be inserted, changed, or deleted once a run leaves `Pending`.
+- **Run inputs are fixed:** `run_kind_id`, the scope (`scope_level_id`, `scope_root_code`, `detail_level_id`), `topology_as_of`, `initial_state_as_of`, and `created_at` can't change after creation; `simulated_window`, `configuration_json`, and overrides can't change once a run leaves `Pending`.
+- **Lifecycle (`simulation.check_run_lifecycle`):** a run is created `Pending` and moves `Pending` → `Running` → `Completed`, or to `Failed` from `Pending` or `Running`; `Completed` and `Failed` are terminal. `started_at` is set exactly once the run has started and `ended_at` exactly once it has ended. Entering `Failed` needs `rva.change_reason`.
 - **Overrides are starting state only,** at most one per asset per run. Changes during a run belong in `configuration_json` or a future per-run event table.
-- **Timestamps:** `started_at >= created_at`, `ended_at` after both (a run can fail before it starts), and `topology_as_of` and `initial_state_as_of` are no later than `created_at`.
+- **Timestamps:** `started_at >= created_at`, `ended_at` after both (a run can fail before it starts), and `topology_as_of` and `initial_state_as_of` are no later than `created_at`. A `simulated_window` is non-empty and has a start.
 
 ## References between modules (no foreign keys)
 

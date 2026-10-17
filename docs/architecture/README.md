@@ -17,5 +17,6 @@ Diagrams of the Resilient VPP Aggregator's documented design. They illustrate th
 | [Runtime view](runtime.md) | Which processes run, how they communicate, and which module owns which data? |
 | [Module contracts](module-contracts.md) | How does one module use another without seeing its internals? |
 | [Data model](data-model.md) | Which tables does `rva_core` hold, and how do they relate? (ERDs generated from `rva_core_init.sql`) |
+| [Model validation scenarios](model-validation-scenarios.md) | Which GridTopology and Simulator cases should validate Phase 1 model coverage? |
 
 These diagrams show the **target design**. For what has been built so far, see the plan's Definition of Done and the repository itself.

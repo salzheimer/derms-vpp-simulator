@@ -1,0 +1,24 @@
+# Database tests: builds rva_core and rva_telemetry from their init scripts, runs the DDL lint on both, and runs the
+# pgTAP suite against rva_core. Same script as local runs (.ai/scripts/verify.md).
+name: db-tests
+
+on:
+  pull_request:
+    paths:
+      - "infrastructure/postgres/**"
+      - "docs/architecture/model-validation-scenarios.md"
+      - ".github/workflows/db-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infrastructure/postgres/**"
+      - ".github/workflows/db-tests.yml"
+
+jobs:
+  db-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint and pgTAP
+        run: infrastructure/postgres/tests/run_tests.sh
