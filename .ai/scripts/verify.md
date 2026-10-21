@@ -17,7 +17,17 @@ dotnet build VppAggregator.slnx
 dotnet test VppAggregator.slnx
 ```
 
-`dotnet test` includes `tests/Rva.ArchitectureTests`, which enforces the module boundaries in `.ai/rules/csharp-monolith.md`. A failure there is a design violation to fix, not a test to update.
+`dotnet test` includes `tests/Rva.ArchitectureTests`, which enforces the module boundaries in `.ai/rules/csharp-monolith.md`. A failure there is a design violation to fix, not a test to update. It also includes `tests/Rva.Host.Tests`, which starts the real host in memory to check its wiring (deployment settings validation, integration event delivery).
+
+Package versions are pinned once in the root `Directory.Packages.props`; `PackageReference` items carry no `Version`.
+
+To run the host locally (Development environment, via `Properties/launchSettings.json`, listening on `http://localhost:5000`):
+
+```
+dotnet run --project src/Rva.Backend/Rva.Host
+```
+
+The host fails at startup, naming the key, if a required setting under `Rva:Deployment` or `ConnectionStrings` (`Core`, `Telemetry`, `Redis`) is missing or invalid. `appsettings.Development.json` supplies local values for the compose stack. Its database connection strings carry no password: set `PGPASSWORD`, or override the whole string with `ConnectionStrings__Core` / `ConnectionStrings__Telemetry`.
 
 ## Database schema (`infrastructure/postgres`)
 

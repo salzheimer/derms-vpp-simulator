@@ -69,6 +69,7 @@ A type belongs in the kernel only if **all** of these hold: it is used by two or
   * Units — `Kilowatts`, `KilowattHours`, `KilovoltAmperes`, `Kilovars`, `Volts`, `Percentage`.
   * Reference codes — `TechnologyTypeCode`, `InterconnectionTypeCode`, `ProtocolStandard`. These wrap the lookup-table code string; they are **not** C# enums, so adding a lookup row never requires a code change. The owning module validates codes against its table.
   * `Result`, `Result<T>`, `Error`, and the `IIntegrationEvent` marker.
+  * The integration-event contracts `IIntegrationEventPublisher` and `IIntegrationEventHandler<TEvent>`: interfaces only, so modules can publish and handle events without referencing `Rva.Host`, which implements the dispatcher.
 * **Prohibited:** entities, business logic, DTOs, module contracts, `DbContext`s, EF Core or any other package dependency, and operational workflows.
 
 ## 6. Cross-Cutting Concerns

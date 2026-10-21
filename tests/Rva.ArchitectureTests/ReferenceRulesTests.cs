@@ -74,6 +74,21 @@ public class ReferenceRulesTests
     }
 
     [Fact]
+    public void Serilog_package_in_a_module_is_rejected()
+    {
+        var graph = ValidBaseline();
+        var module = graph.FindIndex(p => p.Name == "Rva.Modules.A");
+        var host = graph.FindIndex(p => p.Name == "Rva.Host");
+        graph[module] = graph[module] with { PackageReferences = ["Serilog.Sinks.Console"] };
+        graph[host] = graph[host] with { PackageReferences = ["Serilog.AspNetCore"] };
+
+        var violations = ReferenceRules.Violations(graph);
+
+        Assert.Contains(violations, v => v.StartsWith("Rva.Modules.A: must not reference Serilog"));
+        Assert.DoesNotContain(violations, v => v.StartsWith("Rva.Host:"));
+    }
+
+    [Fact]
     public void Framework_reference_in_contracts_is_rejected()
     {
         var graph = ValidBaseline();

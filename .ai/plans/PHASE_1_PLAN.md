@@ -37,7 +37,7 @@ Delivered in parts, one branch and pull request each:
 | Part | Scope | Status |
 |---|---|---|
 | `p1-s00a` | Project skeleton with the allowed references, and the architecture test suite | Done (PR #3) |
-| `p1-s00b` | Host wiring: module registration, Serilog, the in-process event publisher, configurable database names / Redis prefix / MQTT topic root | Not started |
+| `p1-s00b` | Host wiring: module registration, Serilog, the in-process event publisher, configurable database names / Redis prefix / MQTT topic root (see the `p1-s00b` acceptance criteria below) | In progress |
 | `p1-s00c` | Dockerfiles for `Rva.Host` (and the simulator and sidecar profiles) and a CI workflow running build and test (the database tests have their own workflow from `p1-s00f`) | Not started |
 | `p1-s00d` | Digital twin readiness in `rva_core`: grid node identity, wider connection points, column-safe versioning, simulation run kinds; plan and doc rules (see Cross-cutting decisions) | Done (PR #7) |
 | `p1-s00e` | Self-describing schema: table and column comments throughout `rva_core` (generated for history tables), the SQL DDL standard (`.ai/rules/sql-ddl.md`), and a catalog-based DDL lint (`infrastructure/postgres/tests/ddl_lint.sql`) | Done (PR #8) |
@@ -47,6 +47,14 @@ Delivered in parts, one branch and pull request each:
 * **Host (`Rva.Host`):** ASP.NET Core host — HTTP endpoints plus background workers (e.g. MQTT ingestion). Each module exposes `Add<X>Module(IServiceCollection, IConfiguration)` and `Map<X>Endpoints(IEndpointRouteBuilder)`; the host calls these and nothing else module-specific. Serilog configured here.
 * **Shared kernel (`Rva.SharedKernel`):** Starts with only the types Step 1's contracts need; anything else is added when a second module needs it (see the rule's section 5). Expected over Phase 1: typed IDs (`AssetId`, `GridNodeId`, `SubstationId`, `FeederId`, `TransformerId`, `PremiseId`, `MicrogridId`, `SimulationRunId`), units (`Kilowatts`, `KilowattHours`, `KilovoltAmperes`, `Kilovars`, `Volts`, `Percentage`), reference codes (`TechnologyTypeCode`, `InterconnectionTypeCode`, `ProtocolStandard`), `Result`/`Result<T>`/`Error`, `IIntegrationEvent`.
 * **Integration events:** An in-process event publisher in `Rva.Host` (e.g. a `Channel`-backed dispatcher) that modules publish to via an abstraction; handlers live in the consuming module.
+* **`p1-s00b` decisions:** the publish and handle interfaces (`IIntegrationEventPublisher`, `IIntegrationEventHandler<TEvent>`) live in `Rva.SharedKernel` beside `IIntegrationEvent`, as pure contracts; the channel dispatcher that implements them stays in `Rva.Host`. Deployment settings are one host-level `Rva:Deployment` options section (utility code, Redis key prefix, MQTT topic root) validated at startup, plus the `Core`, `Telemetry`, and `Redis` connection strings (database names live in the connection strings); each module reads only its own sections. Package versions are pinned centrally in the root `Directory.Packages.props`. The outbox relay (reading each module's `outbox_messages` and handing events to the dispatcher) is **not** part of `p1-s00b`: it arrives with the first module that publishes (Step 1, GridTopology). Until then, delivery is in-memory and best-effort.
+* **`p1-s00b` acceptance criteria:**
+  * `dotnet build VppAggregator.slnx` and `dotnet test VppAggregator.slnx` pass.
+  * The host registers all three modules and maps their endpoints.
+  * Serilog is configured by host-level settings from appsettings.
+  * A channel-backed event publisher delivers an event to a handler registered by another module without an implementation-project reference between the modules.
+  * Required deployment options fail startup with a clear validation error when missing or invalid.
+  * The host binds the deployment settings and connection strings without implementing any outbox persistence or relay behavior.
 * **Architecture tests:** Reference every backend project from `tests/Rva.ArchitectureTests` and implement the full suite listed in the rule's section 8.
 * **Schema tests:** the pgTAP suite in `infrastructure/postgres/tests/pgtap/` (run by `infrastructure/postgres/tests/run_tests.sh`) exercises versioning, as-of reads, actor/reason capture, key constraints, the simulation triggers, and each validation scenario (`p1-s00f`; see `.ai/scripts/verify.md`).
 * **DDL lint:** `infrastructure/postgres/tests/ddl_lint.sql` checks the built schema against `.ai/rules/sql-ddl.md`; `run_tests.sh` runs it before the pgTAP suite, locally and in CI.
