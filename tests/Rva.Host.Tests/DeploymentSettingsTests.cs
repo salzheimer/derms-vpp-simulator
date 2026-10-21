@@ -63,14 +63,16 @@ public class DeploymentSettingsTests
             ["Rva:Deployment:UtilityCode"] = "pge",
             ["Rva:Deployment:RedisKeyPrefix"] = "rva:pge:",
             ["Rva:Deployment:MqttTopicRoot"] = "rva/pge",
+            ["ConnectionStrings:Core"] = "Host=core-db;Database=rva_core_pge",
+            ["ConnectionStrings:Telemetry"] = "Host=telemetry-db;Database=rva_telemetry_pge",
+            ["ConnectionStrings:Redis"] = "redis-pge:6379",
         });
 
         var deployment = factory.Services.GetRequiredService<IOptions<DeploymentOptions>>().Value;
         var connectionStrings = factory.Services.GetRequiredService<IOptions<ConnectionStringOptions>>().Value;
 
         Assert.Equal(("pge", "rva:pge:", "rva/pge"), (deployment.UtilityCode, deployment.RedisKeyPrefix, deployment.MqttTopicRoot));
-        Assert.Equal("Host=localhost;Port=5432;Database=rva_core;Username=postgres", connectionStrings.Core);
-        Assert.Equal("Host=localhost;Port=5433;Database=rva_telemetry;Username=postgres", connectionStrings.Telemetry);
-        Assert.Equal("localhost:6379", connectionStrings.Redis);
+        Assert.Equal(("Host=core-db;Database=rva_core_pge", "Host=telemetry-db;Database=rva_telemetry_pge", "redis-pge:6379"),
+            (connectionStrings.Core, connectionStrings.Telemetry, connectionStrings.Redis));
     }
 }
