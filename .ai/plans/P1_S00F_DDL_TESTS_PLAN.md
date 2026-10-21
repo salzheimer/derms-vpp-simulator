@@ -1,6 +1,6 @@
 # Plan p1-s00f: Test-driven validation of the rva_core DDL with pgTAP
 
-**Step:** `p1-s00f` (see the step table in `PHASE_1_PLAN.md`) · **Status:** implemented, awaiting review · **Depends on:** `p1-s00e` (DDL lint and SQL standard; merged in PR #8)
+**Step:** `p1-s00f` (see the step table in `PHASE_1_PLAN.md`) · **Status:** done (merged in PR #9) · **Depends on:** `p1-s00e` (DDL lint and SQL standard; merged in PR #8)
 
 ## Context
 
