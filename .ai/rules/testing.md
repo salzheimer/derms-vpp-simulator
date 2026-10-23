@@ -48,6 +48,11 @@ These have not been chosen. Do not add a package for them without a human decisi
 * `TestFrameworkTests` applies the rules in `Support/TestFrameworkRules.cs` to the real files, and checks that `global.json` opts into MTP.
 * `TestFrameworkRulesTests` proves each rule rejects its forbidden shape.
 
-The rules: there is exactly one `Directory.Packages.props`, at the root; central package management is never switched off; no inline versions; no forbidden package anywhere; and any project that references a test package or sets `IsTestProject` lives under `tests/` and references `xunit.v3`. Without the `global.json` opt-in, `dotnet test` stops with an SDK error rather than running zero tests.
+The rules:
+
+* there is exactly one `Directory.Packages.props`, at the root;
+* central package management is never switched off, and no package reference carries an inline version;
+* no forbidden package (the VSTest stack, other frameworks) appears anywhere;
+* any project that references a test package or sets `IsTestProject` lives under `tests/`, references `xunit.v3`, and references **only** the approved test packages above. A mocking library, assertion library, or Testcontainers package therefore fails until it is approved and added to the table and to `TestFrameworkRules.ApprovedTestPackages`. Without the `global.json` opt-in, `dotnet test` stops with an SDK error rather than running zero tests.
 
 These checks run whenever `dotnet test` runs: locally, and in CI once the .NET workflow exists (`p1-s00c`).

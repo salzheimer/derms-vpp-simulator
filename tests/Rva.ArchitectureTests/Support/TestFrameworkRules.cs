@@ -55,6 +55,11 @@ public static class TestFrameworkRules
         ("TngTech.ArchUnitNET.MSTestV2", UseArchUnitV3),
     ];
 
+    // The only packages a test project may reference: the table in .ai/rules/testing.md section 1. Adding one is a
+    // human decision, recorded there first (e.g. a mocking library or Testcontainers).
+    public static readonly string[] ApprovedTestPackages =
+        [Framework, "TngTech.ArchUnitNET.xUnitV3", "Microsoft.AspNetCore.Mvc.Testing", "Microsoft.Testing.Extensions.CodeCoverage"];
+
     // Packages that make a project a test project, whichever framework they belong to.
     private static readonly string[] TestPackagePrefixes =
         ["xunit", "NUnit", "MSTest", "TUnit", "Microsoft.NET.Test.Sdk", "Microsoft.Testing.", "TngTech.ArchUnitNET.", "Microsoft.AspNetCore.Mvc.Testing"];
@@ -91,6 +96,9 @@ public static class TestFrameworkRules
                     violations.Add($"{file.RepoPath}: test projects live under tests/ ({Rule}).");
                 if (!file.PackageReferences.Any(u => u.Package.Equals(Framework, StringComparison.OrdinalIgnoreCase)))
                     violations.Add($"{file.RepoPath}: test project does not reference {Framework}; every .NET test project uses xUnit v3 on Microsoft.Testing.Platform ({Rule}).");
+
+                foreach (var use in file.PackageReferences.Where(u => !ApprovedTestPackages.Contains(u.Package, StringComparer.OrdinalIgnoreCase) && ForbiddenFix(u.Package) is null))
+                    violations.Add($"{file.RepoPath}: {use.Package} is not on the approved test package list ({string.Join(", ", ApprovedTestPackages)}); adding a test package is a human decision, recorded in {Rule} first.");
             }
         }
 

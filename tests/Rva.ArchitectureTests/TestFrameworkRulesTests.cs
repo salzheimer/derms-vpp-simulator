@@ -64,6 +64,21 @@ public class TestFrameworkRulesTests
     public void Approved_xunit_v3_packages_are_not_mistaken_for_v2() =>
         Assert.Empty(ViolationsReplacing("Directory.Packages.props", Central("xunit.v3", "xunit.v3.mtp-v2", "xunit.v3.assert", "TngTech.ArchUnitNET.xUnitV3")));
 
+    [Theory]
+    [InlineData("Moq")]
+    [InlineData("FluentAssertions")]
+    [InlineData("Testcontainers.PostgreSql")]
+    public void Unapproved_package_in_a_test_project_is_rejected(string package) =>
+        Assert.Contains(
+            ViolationsReplacing("tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj",
+                TestProject("tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj", "xunit.v3", package)),
+            v => v.StartsWith($"tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj: {package} is not on the approved test package list"));
+
+    [Fact]
+    public void Approved_list_does_not_apply_to_non_test_projects() =>
+        Assert.Empty(ViolationsReplacing("src/Rva.Backend/Rva.Host/Rva.Host.csproj",
+            TestProject("src/Rva.Backend/Rva.Host/Rva.Host.csproj", "Serilog.AspNetCore", "Microsoft.EntityFrameworkCore")));
+
     [Fact]
     public void Test_project_without_xunit_v3_is_rejected() =>
         Assert.Contains(
