@@ -37,7 +37,7 @@ Delivered in parts, one branch and pull request each:
 | Part | Scope | Status |
 |---|---|---|
 | `p1-s00a` | Project skeleton with the allowed references, and the architecture test suite | Done (PR #3) |
-| `p1-s00b` | Host wiring: module registration, Serilog, the in-process event publisher, configurable database names / Redis prefix / MQTT topic root (see the `p1-s00b` acceptance criteria below) | In progress |
+| `p1-s00b` | Host wiring: module registration, Serilog, the in-process event publisher, configurable database names / Redis prefix / MQTT topic root (see the `p1-s00b` acceptance criteria below) | Done (PR #11) |
 | `p1-s00c` | Dockerfiles for `Rva.Host` (and the simulator and sidecar profiles) and a CI workflow running build and test (the database tests have their own workflow from `p1-s00f`) | Not started |
 | `p1-s00d` | Digital twin readiness in `rva_core`: grid node identity, wider connection points, column-safe versioning, simulation run kinds; plan and doc rules (see Cross-cutting decisions) | Done (PR #7) |
 | `p1-s00e` | Self-describing schema: table and column comments throughout `rva_core` (generated for history tables), the SQL DDL standard (`.ai/rules/sql-ddl.md`), and a catalog-based DDL lint (`infrastructure/postgres/tests/ddl_lint.sql`) | Done (PR #8) |

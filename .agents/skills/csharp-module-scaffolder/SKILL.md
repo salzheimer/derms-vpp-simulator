@@ -30,7 +30,8 @@ When adding a new module (bounded context) under `src/Rva.Backend/Modules/`, e.g
 5. **Give the module its own `DbContext`** mapped to its own schema. Do not add foreign keys to other modules' tables; store their IDs as plain columns.
 6. **Wire it into the host:** reference both projects from `Rva.Host` and call `Add<Area>Module()` / `Map<Area>Endpoints()` in `Program.cs`. Add both projects to `VppAggregator.slnx`.
 7. **Register the module with the architecture tests** in `tests/Rva.ArchitectureTests` so the boundary rules cover it.
+8. **If the module gets a test project,** follow `.ai/rules/testing.md`: `tests/Rva.Modules.<Area>.Tests`, xUnit v3 on Microsoft.Testing.Platform (`xunit.v3`, `<OutputType>Exe</OutputType>`), packages without versions, and only approved test packages. Add it to `VppAggregator.slnx`.
 
 ## Verification
 
-Run `dotnet build VppAggregator.slnx` and `dotnet test VppAggregator.slnx` (see `.ai/scripts/verify.md`). The architecture tests must pass with the new module included.
+Run `dotnet build VppAggregator.slnx` and `dotnet test --solution VppAggregator.slnx` (see `.ai/scripts/verify.md`). The architecture tests must pass with the new module included.

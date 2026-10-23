@@ -1,6 +1,6 @@
 using System.Reflection;
 using ArchUnitNET.Fluent;
-using ArchUnitNET.xUnit;
+using ArchUnitNET.xUnitV3;
 using Rva.ArchitectureTests.Support;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
