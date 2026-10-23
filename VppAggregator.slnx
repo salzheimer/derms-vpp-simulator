@@ -16,5 +16,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj" />
+    <Project Path="tests/Rva.Host.Tests/Rva.Host.Tests.csproj" />
   </Folder>
 </Solution>

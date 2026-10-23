@@ -30,6 +30,14 @@ public static class ReferenceRules
                     violations.Add($"{project.Name} -> {target.Name}: {reason}");
             }
 
+            // Section 6: Serilog is configured only in Rva.Host; modules log through ILogger<T>.
+            if (project.Kind == ProjectKind.Module)
+            {
+                var serilog = project.PackageReferences.Where(IsSerilogPackage).ToList();
+                if (serilog.Count > 0)
+                    violations.Add($"{project.Name}: must not reference Serilog ({string.Join(", ", serilog)}); log through ILogger<T>, Serilog is configured only in Rva.Host.");
+            }
+
             if (project.Kind is ProjectKind.SharedKernel or ProjectKind.Contracts)
             {
                 var allowed = project.Kind == ProjectKind.SharedKernel ? "the .NET base class library" : "Rva.SharedKernel";
@@ -42,6 +50,9 @@ public static class ReferenceRules
 
         return violations;
     }
+
+    private static bool IsSerilogPackage(string package) =>
+        package.Equals("Serilog", StringComparison.OrdinalIgnoreCase) || package.StartsWith("Serilog.", StringComparison.OrdinalIgnoreCase);
 
     private static string? ForbiddenReason(ProjectInfo from, ProjectInfo to) => from.Kind switch
     {

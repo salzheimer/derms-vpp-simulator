@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <!-- Composition root: the only process for the backend. References every module and its .Contracts. -->
   <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rva.Host.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Rva.SharedKernel\Rva.SharedKernel.csproj" />
     <ProjectReference Include="..\Modules\Rva.Modules.GridTopology.Contracts\Rva.Modules.GridTopology.Contracts.csproj" />
     <ProjectReference Include="..\Modules\Rva.Modules.GridTopology\Rva.Modules.GridTopology.csproj" />
