@@ -55,7 +55,8 @@ The rules:
 * no forbidden package (the VSTest stack, other frameworks) appears anywhere;
 * any project that references a test package or sets `IsTestProject` lives under `tests/`, references `xunit.v3`, and references **only** the approved test packages above. A mocking library, assertion library, or Testcontainers package therefore fails until it is approved and added to the table and to `TestFrameworkRules.ApprovedTestPackages`. Without the `global.json` opt-in, `dotnet test` stops with an SDK error rather than running zero tests.
 
-These checks run:
+These checks run in two places. The local hook gives early feedback, but anyone can skip it. Enforcement happens on the server:
 
+* **on every pull request and every push to `main`**, in the `test-guardrail` GitHub Actions workflow (`.github/workflows/test-guardrail.yml`). This run can't be skipped locally. It is meant to become a required check on `main`, but that has to wait: the repository is private on GitHub Free, which does not enforce rulesets (`.ai/rules/agent-workflow.md`). Until then, a failing run is visible on the pull request but does not block the merge. Do not merge a pull request with a failing `test-guardrail` run;
 * **before every commit** that touches a `.csproj`, `.props`, or `.targets` file, `global.json`, or `tests/Rva.ArchitectureTests`. The shared `pre-commit` hook in `.githooks/` runs `TestFrameworkTests` and blocks the commit if it fails. It also refuses to run while any of those files has unstaged or untracked changes, because the tests read the working tree, not the staged content. The hooks are enabled once per clone (`.ai/scripts/verify.md`), and must never be skipped with `--no-verify`;
-* whenever `dotnet test` runs: locally, and in CI once the .NET workflow exists (`p1-s00c`).
+* whenever `dotnet test` runs, as part of the architecture test suite.
