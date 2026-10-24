@@ -8,18 +8,31 @@ Canonical build/test/lint commands for this repo. Any AI tool or human should us
 git config core.hooksPath .githooks
 ```
 
-Enables the shared hooks in `.githooks/`, which block commits on `main` and pushes to `main`. Changes reach `main` only through a pull request (see `.ai/rules/agent-workflow.md`). The hooks are a local safety net; branch protection on GitHub is the real enforcement.
+Enables the shared hooks in `.githooks/`, which block commits on `main` and pushes to `main`. The `pre-commit` hook also runs the test framework guardrail (`.ai/rules/testing.md`) when a commit touches MSBuild files or `global.json`. It needs `dotnet`, and adds a build of the architecture tests to those commits only. Changes reach `main` only through a pull request (see `.ai/rules/agent-workflow.md`). The hooks are a local safety net; branch protection on GitHub is the real enforcement.
 
 ## C# (`src/Rva.Backend`, `src/Rva.Simulator`)
 
 ```
 dotnet build VppAggregator.slnx
-dotnet test VppAggregator.slnx
+dotnet test --solution VppAggregator.slnx
 ```
 
-`dotnet test` includes `tests/Rva.ArchitectureTests`, which enforces the module boundaries in `.ai/rules/csharp-monolith.md`. A failure there is a design violation to fix, not a test to update. It also includes `tests/Rva.Host.Tests`, which starts the real host in memory to check its wiring (deployment settings validation, integration event delivery).
+Tests run on xUnit v3 and Microsoft.Testing.Platform (MTP), switched on for the repo by `global.json` (`.ai/rules/testing.md`). Under MTP the solution is passed with `--solution`; the old `dotnet test VppAggregator.slnx` form is rejected. Other MTP forms:
 
-Package versions are pinned once in the root `Directory.Packages.props`; `PackageReference` items carry no `Version`.
+```
+dotnet test --project tests/Rva.Host.Tests                                                # one test project
+dotnet test --project tests/Rva.Host.Tests --filter-class Rva.Host.Tests.IntegrationEventTests
+dotnet test --project tests/Rva.Host.Tests --filter-method "*Host_starts*"
+dotnet test --solution VppAggregator.slnx --coverage --coverage-output-format cobertura  # one report per test project, in TestResults/ (gitignored)
+```
+
+A test assembly that runs zero tests fails the run (MTP exit code 8). That keeps a full run from silently skipping a project, so never suppress it there. A filter across the whole solution matches nothing in some assemblies; for that case only, add `--ignore-exit-code 8`, or filter one `--project` as above.
+
+VSTest options (`--filter "FullyQualifiedName~..."`, `--collect`, `--logger`) do not apply. The run summary lists each test assembly and a total.
+
+`dotnet test` includes `tests/Rva.ArchitectureTests`, which enforces the module boundaries in `.ai/rules/csharp-monolith.md` and the test framework standard in `.ai/rules/testing.md`. A failure there is a design violation to fix, not a test to update. It also includes `tests/Rva.Host.Tests`, which starts the real host in memory to check its wiring (deployment settings validation, integration event delivery).
+
+Package versions are pinned once in the root `Directory.Packages.props`; `PackageReference` items carry no `Version` or `VersionOverride`.
 
 To run the host locally (Development environment, via `Properties/launchSettings.json`, listening on `http://localhost:5000`):
 
@@ -55,7 +68,7 @@ The pgTAP files need the pgTAP extension, which the compose image does not have,
 
 ## Python (`src/Rva.Intelligence`)
 
-No test/lint tooling configured yet. Once added, expected commands:
+No test/lint tooling configured yet. Tests use pytest (`.ai/rules/testing.md`). Once added, expected commands:
 
 ```
 pytest

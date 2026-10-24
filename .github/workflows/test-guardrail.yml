@@ -1,0 +1,22 @@
+# Test framework guardrail: checks every MSBuild file and global.json against .ai/rules/testing.md (approved test
+# frameworks and packages, central package versions, MTP opt-in). Same tests as the pre-commit hook; this run is the
+# one nobody can skip locally. Intended to become a required check on main once rulesets can be enforced.
+# No paths filter on purpose: a required check that is filtered out never reports, which blocks the pull request.
+name: test-guardrail
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test-guardrail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Test framework guardrail
+        run: dotnet test --project tests/Rva.ArchitectureTests --filter-class Rva.ArchitectureTests.TestFrameworkTests

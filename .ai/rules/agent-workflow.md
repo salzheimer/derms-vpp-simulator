@@ -19,5 +19,5 @@
 
 - Run the relevant focused checks before requesting review and report their results accurately. Follow `.ai/scripts/verify.md` for repository commands.
 - Never bypass failing required checks or branch protections. If a check cannot run or fails for an unrelated reason, explain that in the pull request for human assessment.
-- **Current enforcement:** the repository is private on the GitHub Free plan, so the `main` ruleset is not enforced server-side. The shared hooks in `.githooks/` (enabled per clone with `git config core.hooksPath .githooks`) block commits and pushes to `main` locally; they can be bypassed with `--no-verify`, so never do that.
+- **Current enforcement:** the repository is private on the GitHub Free plan, so the `main` ruleset is not enforced server-side. The shared hooks in `.githooks/` (enabled per clone with `git config core.hooksPath .githooks`) block commits and pushes to `main` locally, and block commits that break the test framework standard (`.ai/rules/testing.md`); they can be bypassed with `--no-verify`, so never do that.
 - These instructions guide agent behavior; they do not technically enforce branch or pull request policy. Protect `main` in the Git hosting configuration, require pull requests and status checks, and use CI to validate plan-step metadata or changed-path scope when that enforcement is needed.

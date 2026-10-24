@@ -28,6 +28,7 @@ Full detail: `.ai/rules/csharp-monolith.md` and `.ai/rules/python-sidecar.md`.
 - `.ai/rules/csharp-monolith.md` — C# module layout, conventions, sovereignty principle.
 - `.ai/rules/sql-ddl.md` — SQL DDL standard: required table/column comments and their checked format, naming, types; read before writing or changing any SQL.
 - `.ai/rules/python-sidecar.md` — sidecar conventions, the Consultant constraint.
+- `.ai/rules/testing.md` — test frameworks (xUnit v3 on Microsoft.Testing.Platform, pgTAP, pytest), approved test packages, where test projects live; read before adding or changing any test project.
 - `.ai/rules/domain-glossary.md` — domain terms (DER, `Asset`, `GridNode` hierarchy, `TechnologyType`, etc.).
 - `.ai/rules/security.md` — audit, RBAC, NERC CIP, Zero Trust, geospatial dispatch rule.
 - `.ai/scripts/verify.md` — build/test/lint commands.

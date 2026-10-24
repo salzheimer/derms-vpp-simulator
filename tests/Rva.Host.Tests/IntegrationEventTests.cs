@@ -74,9 +74,9 @@ public class IntegrationEventTests
         await using var factory = HostWith(inbox, s => s.AddScoped<IIntegrationEventHandler<AssetRegistered>, RecordingHandler>());
         using var client = factory.CreateClient();
 
-        await factory.Services.GetRequiredService<IIntegrationEventPublisher>().PublishAsync(new AssetRegistered("BAT-001"));
+        await factory.Services.GetRequiredService<IIntegrationEventPublisher>().PublishAsync(new AssetRegistered("BAT-001"), TestContext.Current.CancellationToken);
 
-        Assert.Equal(["recording:BAT-001"], await inbox.Received.WaitAsync(Timeout));
+        Assert.Equal(["recording:BAT-001"], await inbox.Received.WaitAsync(Timeout, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -91,11 +91,11 @@ public class IntegrationEventTests
         using var client = factory.CreateClient();
         var publisher = factory.Services.GetRequiredService<IIntegrationEventPublisher>();
 
-        await publisher.PublishAsync(new AssetRegistered("BAT-001"));
-        await publisher.PublishAsync(new OtherEvent());
-        await publisher.PublishAsync(new AssetRegistered("BAT-002"));
+        await publisher.PublishAsync(new AssetRegistered("BAT-001"), TestContext.Current.CancellationToken);
+        await publisher.PublishAsync(new OtherEvent(), TestContext.Current.CancellationToken);
+        await publisher.PublishAsync(new AssetRegistered("BAT-002"), TestContext.Current.CancellationToken);
 
-        Assert.Equal(["recording:BAT-001", "other", "recording:BAT-002"], await inbox.Received.WaitAsync(Timeout));
+        Assert.Equal(["recording:BAT-001", "other", "recording:BAT-002"], await inbox.Received.WaitAsync(Timeout, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -110,10 +110,10 @@ public class IntegrationEventTests
         using var client = factory.CreateClient();
         var publisher = factory.Services.GetRequiredService<IIntegrationEventPublisher>();
 
-        await publisher.PublishAsync(new AssetRegistered("BAT-001"));
-        await publisher.PublishAsync(new AssetRegistered("BAT-002"));
+        await publisher.PublishAsync(new AssetRegistered("BAT-001"), TestContext.Current.CancellationToken);
+        await publisher.PublishAsync(new AssetRegistered("BAT-002"), TestContext.Current.CancellationToken);
 
-        Assert.Equal(["recording:BAT-001", "recording:BAT-002"], await inbox.Received.WaitAsync(Timeout));
+        Assert.Equal(["recording:BAT-001", "recording:BAT-002"], await inbox.Received.WaitAsync(Timeout, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -124,9 +124,9 @@ public class IntegrationEventTests
         using var client = factory.CreateClient();
         var publisher = factory.Services.GetRequiredService<IIntegrationEventPublisher>();
 
-        await publisher.PublishAsync(new OtherEvent());
-        await publisher.PublishAsync(new AssetRegistered("BAT-001"));
+        await publisher.PublishAsync(new OtherEvent(), TestContext.Current.CancellationToken);
+        await publisher.PublishAsync(new AssetRegistered("BAT-001"), TestContext.Current.CancellationToken);
 
-        Assert.Equal(["recording:BAT-001"], await inbox.Received.WaitAsync(Timeout));
+        Assert.Equal(["recording:BAT-001"], await inbox.Received.WaitAsync(Timeout, TestContext.Current.CancellationToken));
     }
 }

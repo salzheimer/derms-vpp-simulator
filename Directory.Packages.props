@@ -1,17 +1,19 @@
 <Project>
-  <!-- Central package versions for every .NET project in the repo. Project files list packages without a Version. -->
+  <!-- Central package versions for every .NET project in the repo. Project files list packages without a Version.
+       This is the only Directory.Packages.props; test packages are restricted by .ai/rules/testing.md, checked by
+       TestFrameworkTests in tests/Rva.ArchitectureTests. -->
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Restore rejects VersionOverride on a PackageReference, so no project can pin its own version. -->
+    <CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>
   </PropertyGroup>
   <ItemGroup Label="Host">
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup Label="Tests">
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageVersion Include="TngTech.ArchUnitNET.xUnit" Version="0.13.4" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
+    <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.4" />
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
   </ItemGroup>
 </Project>
