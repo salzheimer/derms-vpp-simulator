@@ -1,17 +1,48 @@
 #!/bin/sh
-# Blocks commits made directly on protected branches (see .ai/rules/agent-workflow.md).
-# Work on a short-lived branch and merge to main through a pull request.
+# 1. Blocks commits made directly on protected branches (see .ai/rules/agent-workflow.md).
+#    Work on a short-lived branch and merge to main through a pull request.
+# 2. Runs the test framework guardrail (.ai/rules/testing.md) when the commit touches MSBuild files, global.json,
+#    or the guardrail itself, so a test project on the wrong framework or packages is never committed.
 # Enable once per clone:  git config core.hooksPath .githooks
 
 protected_branches="main"
 
-branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) || exit 0  # detached HEAD: nothing to protect
+if branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null); then  # detached HEAD: no branch to protect
+    for protected in $protected_branches; do
+        if [ "$branch" = "$protected" ]; then
+            echo "pre-commit: direct commits to '$protected' are not allowed." >&2
+            echo "Create a branch first, e.g.  git switch -c step/<plan-step-id>-<slug>" >&2
+            exit 1
+        fi
+    done
+fi
 
-for protected in $protected_branches; do
-    if [ "$branch" = "$protected" ]; then
-        echo "pre-commit: direct commits to '$protected' are not allowed." >&2
-        echo "Create a branch first, e.g.  git switch -c step/<plan-step-id>-<slug>" >&2
-        exit 1
-    fi
-done
+# Files the guardrail reads, plus the guardrail's own code. Git pathspec '*' also matches '/', so these match at any depth.
+guarded="*.csproj *.props *.targets global.json tests/Rva.ArchitectureTests/*"
+
+# shellcheck disable=SC2086  # $guarded is a list of pathspecs
+[ -z "$(git diff --cached --name-only -- $guarded)" ] && exit 0
+
+# The tests read the working tree, so it must match what is being committed for these files.
+# shellcheck disable=SC2086
+pending=$( { git diff --name-only -- $guarded; git ls-files --others --exclude-standard -- $guarded; } | sort -u)
+if [ -n "$pending" ]; then
+    echo "pre-commit: these build or guardrail files have unstaged or untracked changes:" >&2
+    echo "$pending" | sed 's/^/  /' >&2
+    echo "The test framework guardrail checks the working tree, so stage or stash them first (git add / git stash -k)." >&2
+    exit 1
+fi
+
+if ! command -v dotnet >/dev/null 2>&1; then
+    echo "pre-commit: dotnet not found; it is needed to run the test framework guardrail (.ai/rules/testing.md)." >&2
+    exit 1
+fi
+
+root=$(git rev-parse --show-toplevel)
+echo "pre-commit: build files changed; running the test framework guardrail (.ai/rules/testing.md)..." >&2
+if ! output=$(dotnet test --project "$root/tests/Rva.ArchitectureTests" --filter-class Rva.ArchitectureTests.TestFrameworkTests 2>&1); then
+    echo "$output" >&2
+    echo "pre-commit: the test framework guardrail failed; fix the violations above (see .ai/rules/testing.md)." >&2
+    exit 1
+fi
 exit 0
