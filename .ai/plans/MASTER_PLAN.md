@@ -39,7 +39,7 @@ Both VPP models share the same assets, grid hierarchy, telemetry, device integra
 
 ## 4. Implementation Roadmap
 
-### Phase 1: Ingestion, Geospatial & Chaos (Weeks 1-3)
+### Phase 1: Ingestion, Geospatial & Chaos
 See `.ai/plans/PHASE_1_PLAN.md` for full implementation detail and the Definition of Done checklist.
 
 - [ ] **Foundation:** Solution skeleton, `Rva.Host` host, `Rva.SharedKernel`, architecture test suite, and Docker infrastructure (both databases, Mosquitto, Redis).
@@ -48,18 +48,18 @@ See `.ai/plans/PHASE_1_PLAN.md` for full implementation detail and the Definitio
 - [ ] **Telemetry module:** High-throughput MQTT ingestion with CloudEvents, an Anti-Corruption Layer using `protocol_mappings`, and the `asset_telemetry` hypertable.
 - [ ] **Chaos Engine (`Rva.Simulator`):** 50,000+ node fleet simulation using zero-allocation integer-indexed state, driven by run configuration from the backend.
 
-### Phase 2: AI & Resilience (Weeks 4-6)
+### Phase 2: AI & Resilience
 - [ ] **AI Sidecar:** Implement Python LSTM for load forecasting.
 - [ ] **Resilience:** Wrap AI calls in **Polly Circuit Breakers**.
 - [ ] **Auth:** Implement JWT-based Service-to-Service (S2S) authentication.
 - [ ] **Logic:** Implement "Safe-Fail" defaults if the AI sidecar is unhealthy or "tripped."
 
-### Phase 3: Reconciliation & Observability (Weeks 7-8)
+### Phase 3: Reconciliation & Observability
 - [ ] **The Reconciliation Loop:** Background service to compare "Commanded State" vs "Actual Telemetry" (Calculating Variance).
 - [ ] **Dashboard:** React + TypeScript UI visualizing fleet health, spatial distribution, and variance.
 - [ ] **Identity:** Integrate OIDC for User RBAC (`Operator` vs `Auditor`).
 
-### Phase 4: Compliance & Cloud Hardening (Weeks 9-10)
+### Phase 4: Compliance & Cloud Hardening
 - [ ] **Audit:** Implement an Audit module with **Serilog.AuditTo** for immutable command logging.
 - [ ] **IaC:** Terraform scripts for Azure/AWS (Key Vault, Managed DB, Container Apps).
 - [ ] **Edge Logic:** Finalize "Deadman's Switch" for local device fallback during comms loss.
