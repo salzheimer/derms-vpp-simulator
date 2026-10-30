@@ -18,6 +18,10 @@ builder.Services.AddSerilog((services, logger) => logger
 builder.Services.AddDeploymentSettings(builder.Configuration);
 builder.Services.AddIntegrationEvents();
 
+// Liveness only: the process is up and its settings validated. Readiness checks (databases, Redis, MQTT) are added
+// with the modules that use them.
+builder.Services.AddHealthChecks();
+
 builder.Services
     .AddGridTopologyModule(builder.Configuration)
     .AddTelemetryModule(builder.Configuration)
@@ -26,6 +30,8 @@ builder.Services
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
+
+app.MapHealthChecks("/health");
 
 app.MapGridTopologyEndpoints();
 app.MapTelemetryEndpoints();

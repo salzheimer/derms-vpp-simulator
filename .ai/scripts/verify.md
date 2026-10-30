@@ -68,15 +68,39 @@ The pgTAP files need the pgTAP extension, which the compose image does not have,
 
 ## Python (`src/Rva.Intelligence`)
 
-No test/lint tooling configured yet. Tests use pytest (`.ai/rules/testing.md`). Once added, expected commands:
+Python 3.12. Runtime dependencies are in `requirements.txt`; test and lint tools in `requirements-dev.txt`:
+
+```
+pip install -r requirements-dev.txt
+```
+
+No tests or lint configuration exist yet. Tests use pytest (`.ai/rules/testing.md`). Once added, expected commands:
 
 ```
 pytest
 ruff check .
 ```
 
+PyTorch publishes no wheels for Intel macOS after 2.2, and llvmlite (needed by tslearn) has none either, so on an Intel Mac the sidecar runs only in its container (see Containers below).
+
+## Containers
+
+The `ci` workflow (`.github/workflows/ci.yml`) builds these images and checks `/health` on the backend and sidecar. The .NET images build from the repo root; the sidecar builds from its own directory:
+
+```
+docker build -f src/Rva.Backend/Rva.Host/Dockerfile -t rva-backend .
+docker build -f src/Rva.Simulator/Dockerfile -t rva-simulator .
+docker build -t rva-intelligence src/Rva.Intelligence
+```
+
 ## Infrastructure
 
 ```
 docker compose -f infrastructure/docker/docker-compose.yml up -d
+```
+
+The application services are behind profiles. Add `--profile backend` (or `simulator`, `intelligence`) to build and start them as well; the backend answers `http://localhost:5000/health`:
+
+```
+docker compose -f infrastructure/docker/docker-compose.yml --profile backend up -d --build
 ```

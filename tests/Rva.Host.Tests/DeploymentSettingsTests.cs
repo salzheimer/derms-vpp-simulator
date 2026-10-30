@@ -15,7 +15,7 @@ public class DeploymentSettingsTests
         using var client = factory.CreateClient();
         var response = await client.GetAsync("/", TestContext.Current.CancellationToken);
 
-        // No module maps an endpoint yet, so any request is a 404 from a running host.
+        // No module maps an endpoint yet, so any request outside /health is a 404 from a running host.
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 

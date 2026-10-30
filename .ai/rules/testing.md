@@ -30,7 +30,7 @@ pgTAP, run by `infrastructure/postgres/tests/run_tests.sh`. The conventions (one
 
 ## 3. Python sidecar (`src/Rva.Intelligence`)
 
-pytest, with `pytest-asyncio` for async code (both in `requirements.txt`). Not `unittest` test classes, nose, or other runners. Not enforced yet: the sidecar has no test tooling configured, so enforcement is added with it.
+pytest, with `pytest-asyncio` for async code (both in `requirements-dev.txt`). Not `unittest` test classes, nose, or other runners. Not enforced yet: the sidecar has no test tooling configured, so enforcement is added with it.
 
 ## 4. Not decided yet
 

@@ -1,0 +1,10 @@
+# Build context for the .NET images (src/Rva.Backend/Rva.Host/Dockerfile, src/Rva.Simulator/Dockerfile) is the repo
+# root. Send only what they build from; the sidecar image uses src/Rva.Intelligence as its own context.
+*
+!global.json
+!Directory.Packages.props
+!src/Rva.Backend/
+!src/Rva.Simulator/
+**/bin/
+**/obj/
+**/Dockerfile
