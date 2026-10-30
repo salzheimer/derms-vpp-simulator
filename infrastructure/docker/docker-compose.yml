@@ -87,22 +87,23 @@ services:
       timeout: 5s
       retries: 5
 
-  # Rva.Backend: .NET 10 Modular Monolith, run by the Rva.Host project (placeholder until Step 0 adds its Dockerfile)
+  # Rva.Backend: .NET 10 Modular Monolith, run by the Rva.Host project. Liveness at http://localhost:5000/health.
+  # Built from the repo root: the build needs global.json and the central Directory.Packages.props.
   rva-backend:
     build:
-      context: ../../src/Rva.Backend
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/Rva.Backend/Rva.Host/Dockerfile
     container_name: rva_backend
     ports:
       - "5000:8080"
     environment:
+      # Development loads appsettings.Development.json, which supplies Rva:Deployment (utility code, Redis key prefix,
+      # MQTT topic root); override any of them with Rva__Deployment__<Key>. MQTT broker and AI sidecar settings are
+      # added with the modules that read them.
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Core: "Host=rva-core-db;Port=5432;Database=rva_core;Username=${RVA_DB_USER:-postgres};Password=${RVA_DB_PASSWORD:-password}"
       ConnectionStrings__Telemetry: "Host=rva-telemetry-db;Port=5432;Database=rva_telemetry;Username=${RVA_DB_USER:-postgres};Password=${RVA_DB_PASSWORD:-password}"
       ConnectionStrings__Redis: "rva-redis:6379"
-      MqttSettings__Host: "rva-mqtt-broker"
-      MqttSettings__Port: 1883
-      AiSidecar__BaseUrl: "http://rva-intelligence:8000"  # optional dependency: calls go through the Polly circuit breaker
     depends_on:
       rva-core-db:
         condition: service_healthy
@@ -117,11 +118,12 @@ services:
     networks:
       - rva-network
 
-  # Rva.Simulator: Monte Carlo Chaos Engine (placeholder). Separate process: reaches the backend only over HTTP and MQTT
+  # Rva.Simulator: Monte Carlo Chaos Engine (placeholder until Step 4). Separate process: reaches the backend only over
+  # HTTP and MQTT. Built from the repo root, like the backend.
   rva-simulator:
     build:
-      context: ../../src/Rva.Simulator
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/Rva.Simulator/Dockerfile
     container_name: rva_simulator
     environment:
       DOTNET_ENVIRONMENT: Development

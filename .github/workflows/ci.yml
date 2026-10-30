@@ -1,0 +1,59 @@
+# Build and test: the .NET solution (architecture tests, host wiring tests) with the same commands as local runs
+# (.ai/scripts/verify.md), and the container images. Each image that serves HTTP is started and must answer its
+# health endpoint. The database tests run separately in db-tests.yml.
+# No paths filter, for the same reason as test-guardrail.yml: a required check that is filtered out never reports.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Build
+        run: dotnet build VppAggregator.slnx
+      - name: Test
+        run: dotnet test --solution VppAggregator.slnx --no-build
+
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: .
+            dockerfile: src/Rva.Backend/Rva.Host/Dockerfile
+            # The host validates its settings at startup; Development supplies them (no database is opened yet).
+            run_args: -e ASPNETCORE_ENVIRONMENT=Development -p 8080:8080
+            health_url: http://localhost:8080/health
+          - name: simulator
+            context: .
+            dockerfile: src/Rva.Simulator/Dockerfile
+          - name: intelligence
+            context: src/Rva.Intelligence
+            dockerfile: src/Rva.Intelligence/Dockerfile
+            run_args: -p 8000:8000
+            health_url: http://localhost:8000/health
+    name: image (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -f ${{ matrix.dockerfile }} -t rva-${{ matrix.name }} ${{ matrix.context }}
+      - name: Start and check health
+        if: matrix.health_url
+        run: |
+          docker run -d --name rva-${{ matrix.name }} ${{ matrix.run_args }} rva-${{ matrix.name }}
+          if ! curl --silent --show-error --fail --retry 30 --retry-delay 2 --retry-all-errors ${{ matrix.health_url }}; then
+            docker logs rva-${{ matrix.name }}
+            exit 1
+          fi
