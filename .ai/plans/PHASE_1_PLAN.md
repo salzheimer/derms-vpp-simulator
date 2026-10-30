@@ -73,6 +73,18 @@ Delivered in parts, one branch and pull request each:
 
 **Goal:** Own the physical grid model: the hierarchy and its ratings, customer sites, microgrids, assets and what they are made of, and the technology/interconnection taxonomy, including how that taxonomy maps to external protocols. The schema is in `infrastructure/postgres/core/rva_core_init.sql`.
 
+Delivered in parts, one branch and pull request each. The module structure, decisions, error handling, and the test catalogue for every part are in `.ai/plans/P1_S01_GRID_TOPOLOGY_PLAN.md`.
+
+| Part | Scope | Status |
+|---|---|---|
+| `p1-s01a` | Foundation: test package decisions, shared kernel types, `DbContext` and mappings, change context, error classification, readiness check, test projects and the database test harness | Not started |
+| `p1-s01b` | Catalog and development seed (protocol mappings, hardware profiles, sample Portland topology); `ResolveTechnologyType`, `GetProtocolMappings` | Not started |
+| `p1-s01c` | Reads: `GetAsset`, `GetAssetsBySubstation`, `GetSubstationTree`, `GetConstraintPath`, `ResolveNode`, as-of reads | Not started |
+| `p1-s01d` | Grid state: `RecordGridStateEvent`, `GetGridState`, effective state and eligibility | Not started |
+| `p1-s01e` | Asset writes: `RegisterAsset`, `ChangeAssetLifecycle`, `ChangeParticipation`, events written to the outbox | Not started |
+| `p1-s01f` | Outbox relay delivering the integration events | Not started |
+| `p1-s01g` | `GetTopologySnapshot` for `Rva.Simulator` | Not started |
+
 * **Modeling principles:**
   * **An asset is a grid-facing controllable resource:** everything behind **one control interface**, at **one connection point**, with **one rating at that point**. A DC-coupled Powerwall 3 home with PV is one asset; an Enphase PV + battery system behind one IQ Gateway is one asset; Tesla batteries plus SolarEdge PV at the same home are two assets.
   * **An asset's rating is not the sum of its components.** Dispatch uses asset ratings; the simulator uses component ratings for physics.
@@ -114,7 +126,7 @@ Delivered in parts, one branch and pull request each:
   * **B:** non-export C&I warehouse with separate PV and battery systems (`premises.export_limit_kw = 0`, behind-the-meter microgrid via `can_island`).
   * **C:** residential home with three Powerwall 3s and a 10 kW site export cap (large equipment, still `residential`).
   * **D:** community microgrid on a feeder — 20 homes (Tesla DC-coupled, Enphase single-gateway, PV-only, and a mixed-vendor home with two assets), a school, and a feeder-connected community battery — including a neighborhood transformer whose connected inverter capacity exceeds its rating.
-* **Features:** `RegisterAsset`, `ChangeAssetLifecycle` (commission, decommission), `ChangeParticipation`, `RecordGridStateEvent`, `GetAsset`, `GetSubstationTree`, `GetTopologySnapshot(scopeRoot, detail, asOf)` (bulk export of a subtree at a chosen level of detail and topology version, used by `Rva.Simulator`).
+* **Features:** `RegisterAsset`, `ChangeAssetLifecycle` (install, commission, decommission), `ChangeParticipation`, `RecordGridStateEvent`, `GetAsset`, `GetSubstationTree`, `GetTopologySnapshot(scopeRoot, detail, asOf)` (bulk export of a subtree at a chosen level of detail and topology version, used by `Rva.Simulator`).
 * **Contracts:** `IGridTopologyQueries` (`GetAsset(id, asOf?)`, `GetAssetsBySubstation`, `GetConstraintPath(assetId, asOf?)`, `GetGridState(assetId, asOf?)`, `GetTopologySnapshot(scopeRoot, detail, asOf)`, `ResolveTechnologyType`, `GetProtocolMappings`), `AssetSnapshot` (connection point and substation, ratings, site and microgrid limits, makeup, control manufacturer, lifecycle and participation state, `ValidFrom`), `ProtocolMappingSnapshot`, and the events `AssetRegistered`, `AssetUpdated`, `AssetDecommissioned`.
   * `GetConstraintPath` returns the nodes whose limits apply to an asset, from its connection point up to the substation, each with its `GridNodeId`, level, code, and ratings, plus the site and microgrid limits. Phase 1 derives it from the hierarchy; a later network model can derive it from the energized path. Constraint and dispatch code uses it instead of walking parent IDs.
 
