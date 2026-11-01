@@ -30,7 +30,7 @@ A test assembly that runs zero tests fails the run (MTP exit code 8). That keeps
 
 VSTest options (`--filter "FullyQualifiedName~..."`, `--collect`, `--logger`) do not apply. The run summary lists each test assembly and a total.
 
-`dotnet test` needs Docker for `tests/Rva.Modules.GridTopology.Integration.Tests`: it builds the pgTAP test image (`infrastructure/postgres/tests/Dockerfile`) and starts one throwaway PostgreSQL container per run through Testcontainers, with `infrastructure/postgres/core` mounted as in compose; each test gets its own database copied from a template (schema only, or schema plus fixtures A-D). It never touches the compose stack. Without Docker, that project fails; run the others with `--project`. The unit tests (`tests/Rva.Modules.GridTopology.Tests`) need neither Docker nor a database. Agents in a Claude Code sandbox may not be able to run `dotnet` (the test runner's local pipe) or reach Docker unless `/sandbox` allows them; their pull requests say so, and results come from CI or a local run.
+`dotnet test` needs Docker for `tests/Rva.Modules.GridTopology.Integration.Tests`: it builds the pgTAP test image (`infrastructure/postgres/tests/Dockerfile`) and starts one throwaway PostgreSQL container per run through Testcontainers, with `infrastructure/postgres/core` mounted as in compose (and `infrastructure/postgres/seed`, for the seed tests); each test gets its own database copied from a template (schema only, or schema plus fixtures A-D). It never touches the compose stack. Without Docker, that project fails; run the others with `--project`. The unit tests (`tests/Rva.Modules.GridTopology.Tests`) need neither Docker nor a database. Agents in a Claude Code sandbox may not be able to run `dotnet` (the test runner's local pipe) or reach Docker unless `/sandbox` allows them; their pull requests say so, and results come from CI or a local run.
 
 `dotnet test` also includes `tests/Rva.ArchitectureTests`, which enforces the module boundaries in `.ai/rules/csharp-monolith.md` and the test framework standard in `.ai/rules/testing.md`. A failure there is a design violation to fix, not a test to update. It also includes `tests/Rva.Host.Tests`, which starts the real host in memory to check its wiring (deployment settings validation, integration event delivery).
 
@@ -67,6 +67,16 @@ docker exec -i rva_telemetry_db psql -U postgres -d rva_telemetry -v ON_ERROR_ST
 ```
 
 The pgTAP files need the pgTAP extension, which the compose image does not have, so run them through `run_tests.sh`.
+
+### Development seed
+
+The init script creates the schema and its lookup rows only. To load the catalog (hardware profiles, protocol mappings) and the sample Portland topology (2 substations, 554 assets at all four connection levels, one microgrid, one overloaded transformer) into the running compose database:
+
+```
+RVA_SEED_CONTAINER=rva_core_db infrastructure/postgres/seed/seed.sh
+```
+
+Without `RVA_SEED_CONTAINER` it uses a local `psql` and the standard libpq variables (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, which defaults to `rva_core`). Both files run in one transaction, so a failure commits nothing. The script can be re-run: it adds no rows and no history. A catalog row that differs from `catalog.sql` is left unchanged and printed as a `catalog drift` WARNING. It exits 3 on a database without the `rva_core` schema. Tests never load the development topology (they use fixtures A–D); the seed's own tests in `tests/Rva.Modules.GridTopology.Integration.Tests/Seed/` run `seed.sh` against a throwaway database.
 
 ## Python (`src/Rva.Intelligence`)
 

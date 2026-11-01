@@ -1,5 +1,6 @@
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
+using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Images;
 using Npgsql;
 using Rva.Modules.GridTopology.Integration.Tests.Infrastructure;
@@ -17,6 +18,9 @@ public enum TestDatabaseTemplate
 
     /// <summary>The schema plus pgTAP fixtures A-D (codes FXA- to FXD-).</summary>
     Fixtures,
+
+    /// <summary>A bare database without the rva_core schema (copied from template0).</summary>
+    NoSchema,
 }
 
 /// <summary>
@@ -31,6 +35,9 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
     private const string Password = "test";
     private const string EmptyTemplateName = "rva_core";
     private const string FixturesTemplateName = "rva_fixtures";
+
+    /// <summary>Where infrastructure/postgres/seed is mounted in the container.</summary>
+    public const string SeedDirectory = "/seed";
 
     private static readonly string[] FixtureFiles =
     [
@@ -67,6 +74,7 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
             .WithPassword(Password)
             .WithBindMount(Path.Combine(postgresDir, "core"), "/docker-entrypoint-initdb.d", AccessMode.ReadOnly)
             .WithBindMount(testsDir, "/tests", AccessMode.ReadOnly)
+            .WithBindMount(Path.Combine(postgresDir, "seed"), SeedDirectory, AccessMode.ReadOnly)
             .Build();
         await container.StartAsync();
         await WaitForInitAsync();
@@ -89,7 +97,13 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
     public async Task<TestDatabase> CreateDatabaseAsync(TestDatabaseTemplate template, CancellationToken cancellationToken)
     {
         var name = $"test_{Interlocked.Increment(ref databaseCount)}";
-        var source = template == TestDatabaseTemplate.Empty ? EmptyTemplateName : FixturesTemplateName;
+        var source = template switch
+        {
+            TestDatabaseTemplate.Empty => EmptyTemplateName,
+            TestDatabaseTemplate.Fixtures => FixturesTemplateName,
+            TestDatabaseTemplate.NoSchema => "template0",
+            _ => throw new ArgumentOutOfRangeException(nameof(template), template, null),
+        };
 
         await createGate.WaitAsync(cancellationToken);
         try
@@ -107,6 +121,21 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
 
         return new TestDatabase(ConnectionStringFor(name));
     }
+
+    /// <summary>
+    /// Runs seed.sh from <paramref name="seedDirectory"/> inside the container against <paramref name="database"/>, as a
+    /// developer would run it: psql over the local socket, configured by the standard libpq variables.
+    /// </summary>
+    public async Task<ExecResult> RunSeedAsync(TestDatabase database, CancellationToken cancellationToken, string seedDirectory = SeedDirectory) =>
+        await Container.ExecAsync(["env", $"PGDATABASE={database.Name}", "PGUSER=postgres", "bash", $"{seedDirectory}/seed.sh"], cancellationToken);
+
+    /// <summary>Runs SQL files (container paths) on <paramref name="database"/> in one transaction; throws if psql fails.</summary>
+    public Task RunSqlFilesAsync(TestDatabase database, params string[] files) =>
+        PsqlAsync(database.Name, ["-1", .. files.SelectMany(f => new[] { "-f", f })]);
+
+    /// <summary>Writes a text file into the container, ex. a modified copy of a seed file.</summary>
+    public Task CopyToContainerAsync(string content, string path, CancellationToken cancellationToken) =>
+        Container.CopyAsync(System.Text.Encoding.UTF8.GetBytes(content), path, ct: cancellationToken);
 
     private string ConnectionStringFor(string database) =>
         new NpgsqlConnectionStringBuilder(Container.GetConnectionString()) { Database = database }.ConnectionString;

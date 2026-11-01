@@ -17,4 +17,10 @@ public static class GridTopologyErrors
 
     /// <summary>Validation: a change needs a reason of 1 to 255 characters for the history tables.</summary>
     public const string ChangeReasonInvalid = "GridTopology.ChangeReasonInvalid";
+
+    /// <summary>NotFound: no protocol mapping has this standard, resource category, and asset type code.</summary>
+    public const string ProtocolMappingNotFound = "GridTopology.ProtocolMappingNotFound";
+
+    /// <summary>Validation: a protocol mapping query needs a standard and non-blank resource category and asset type code.</summary>
+    public const string ProtocolMappingQueryInvalid = "GridTopology.ProtocolMappingQueryInvalid";
 }

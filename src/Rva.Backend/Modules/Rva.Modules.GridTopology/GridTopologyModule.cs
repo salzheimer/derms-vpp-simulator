@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Rva.Modules.GridTopology.Contracts;
+using Rva.Modules.GridTopology.Features.ProtocolMappings;
 using Rva.Modules.GridTopology.Persistence;
 
 namespace Rva.Modules.GridTopology;
@@ -31,6 +32,8 @@ public static class GridTopologyModule
         services.AddScoped<UnitOfWork>();
         services.AddSingleton<LookupCatalog>();
 
+        services.AddScoped<ResolveTechnologyTypeHandler>();
+        services.AddScoped<GetProtocolMappingsHandler>();
         services.AddScoped<IGridTopologyQueries, GridTopologyQueries>();
 
         services.AddHealthChecks().AddCheck<ReadinessCheck>(ReadinessCheck.Name, tags: [ReadinessTag], timeout: TimeSpan.FromSeconds(5));
