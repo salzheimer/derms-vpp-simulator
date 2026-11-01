@@ -5,6 +5,15 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <!-- EF Core maps onto infrastructure/postgres/core/rva_core_init.sql; there are no EF migrations (plan p1-s01, D5, D6). -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rva.Modules.GridTopology.Tests" />
+    <InternalsVisibleTo Include="Rva.Modules.GridTopology.Integration.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\Rva.SharedKernel\Rva.SharedKernel.csproj" />
     <ProjectReference Include="..\Rva.Modules.GridTopology.Contracts\Rva.Modules.GridTopology.Contracts.csproj" />
   </ItemGroup>

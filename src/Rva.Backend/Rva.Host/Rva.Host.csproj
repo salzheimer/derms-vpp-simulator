@@ -5,6 +5,7 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Rva.Host.Tests" />
+    <InternalsVisibleTo Include="Rva.Modules.GridTopology.Integration.Tests" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Rva.SharedKernel\Rva.SharedKernel.csproj" />

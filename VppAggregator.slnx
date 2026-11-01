@@ -17,5 +17,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj" />
     <Project Path="tests/Rva.Host.Tests/Rva.Host.Tests.csproj" />
+    <Project Path="tests/Rva.Modules.GridTopology.Tests/Rva.Modules.GridTopology.Tests.csproj" />
+    <Project Path="tests/Rva.Modules.GridTopology.Integration.Tests/Rva.Modules.GridTopology.Integration.Tests.csproj" />
   </Folder>
 </Solution>
