@@ -6,6 +6,7 @@
 - Work on one approved plan step per branch and pull request. Do not continue to later steps unless separately authorized.
 - If a step is ambiguous, spans module ownership boundaries, or depends on unfinished work, stop and ask the human to clarify or split/reorder the step. Do not silently expand scope.
 - Agents may analyze, propose changes, implement, test, and prepare pull requests. A human reviews the complete diff and validation results, decides whether to merge, and approves deployments. Agent output or review is not a substitute for human approval.
+- 'Evaluate', 'assess', 'check alignment' and 'review' mean analysis only. Report findings and proposed changes, then wait before implementing.
 
 ## Branch and Pull Request
 
