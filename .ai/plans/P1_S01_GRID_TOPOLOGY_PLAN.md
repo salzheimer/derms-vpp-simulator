@@ -1,6 +1,6 @@
 # Plan p1-s01: GridTopology module
 
-**Step:** `p1-s01` (Phase 1 Step 1 in `PHASE_1_PLAN.md`) · **Status:** approved, not started · **Depends on:** `p1-s00a`–`p1-s00f` (done; `s00c` merged in PR #14)
+**Step:** `p1-s01` (Phase 1 Step 1 in `PHASE_1_PLAN.md`) · **Status:** approved, in progress (`s01a` done in PR #16) · **Depends on:** `p1-s00a`–`p1-s00f` (done; `s00c` merged in PR #14)
 
 The domain model, invariants, feature list, and contract list are in `PHASE_1_PLAN.md` Step 1, and the schema is `infrastructure/postgres/core/rva_core_init.sql`. This plan does not restate them. It sets the module's internal structure, splits the step into parts that can each be reviewed on their own, defines how errors are handled, and lists the tests each part must pass.
 

@@ -38,7 +38,7 @@ Delivered in parts, one branch and pull request each:
 |---|---|---|
 | `p1-s00a` | Project skeleton with the allowed references, and the architecture test suite | Done (PR #3) |
 | `p1-s00b` | Host wiring: module registration, Serilog, the in-process event publisher, configurable database names / Redis prefix / MQTT topic root (see the `p1-s00b` acceptance criteria below) | Done (PR #11) |
-| `p1-s00c` | Dockerfiles for `Rva.Host` (and the simulator and sidecar profiles), the sidecar dependency refresh for Python 3.12, and a CI workflow running build and test (the database tests have their own workflow from `p1-s00f`) (see the `p1-s00c` acceptance criteria below) | In progress |
+| `p1-s00c` | Dockerfiles for `Rva.Host` (and the simulator and sidecar profiles), the sidecar dependency refresh for Python 3.12, and a CI workflow running build and test (the database tests have their own workflow from `p1-s00f`) (see the `p1-s00c` acceptance criteria below) | Done (PR #14) |
 | `p1-s00d` | Digital twin readiness in `rva_core`: grid node identity, wider connection points, column-safe versioning, simulation run kinds; plan and doc rules (see Cross-cutting decisions) | Done (PR #7) |
 | `p1-s00e` | Self-describing schema: table and column comments throughout `rva_core` (generated for history tables), the SQL DDL standard (`.ai/rules/sql-ddl.md`), and a catalog-based DDL lint (`infrastructure/postgres/tests/ddl_lint.sql`) | Done (PR #8) |
 | `p1-s00f` | Executable schema tests: pgTAP suite for the GridTopology and Simulation scenarios (`docs/architecture/model-validation-scenarios.md`), reusable fixtures A–D, the smoke test ported to pgTAP, a test runner and CI job; asset lifecycle, program participation, and grid state events in `rva_core` (see `.ai/plans/P1_S00F_DDL_TESTS_PLAN.md`) | Done (PR #9) |
@@ -77,7 +77,7 @@ Delivered in parts, one branch and pull request each. The module structure, deci
 
 | Part | Scope | Status |
 |---|---|---|
-| `p1-s01a` | Foundation: test package decisions, shared kernel types, `DbContext` and mappings, change context, error classification, readiness check, test projects and the database test harness | Not started |
+| `p1-s01a` | Foundation: test package decisions, shared kernel types, `DbContext` and mappings, change context, error classification, readiness check, test projects and the database test harness | Done (PR #16) |
 | `p1-s01b` | Catalog and development seed (protocol mappings, hardware profiles, sample Portland topology); `ResolveTechnologyType`, `GetProtocolMappings` | Not started |
 | `p1-s01c` | Reads: `GetAsset`, `GetAssetsBySubstation`, `GetSubstationTree`, `GetConstraintPath`, `ResolveNode`, as-of reads | Not started |
 | `p1-s01d` | Grid state: `RecordGridStateEvent`, `GetGridState`, effective state and eligibility | Not started |
