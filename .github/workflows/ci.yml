@@ -1,6 +1,7 @@
-# Build and test: the .NET solution (architecture tests, host wiring tests) with the same commands as local runs
-# (.ai/scripts/verify.md), and the container images. Each image that serves HTTP is started and must answer its
-# health endpoint. The database tests run separately in db-tests.yml.
+# Build and test: the .NET solution (architecture, unit, host wiring, and module integration tests) with the same
+# commands as local runs (.ai/scripts/verify.md), and the container images. The module integration tests start their
+# own PostgreSQL containers through Testcontainers, using the runner's Docker. Each image that serves HTTP is started
+# and must answer its health endpoint. The database tests run separately in db-tests.yml.
 # No paths filter, for the same reason as test-guardrail.yml: a required check that is filtered out never reports.
 name: ci
 
@@ -12,7 +13,8 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The integration tests build the pgTAP test image (apt-get install) before their first test.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -33,7 +35,8 @@ jobs:
           - name: backend
             context: .
             dockerfile: src/Rva.Backend/Rva.Host/Dockerfile
-            # The host validates its settings at startup; Development supplies them (no database is opened yet).
+            # The host validates its settings at startup; Development supplies them. No database runs here: the host must
+            # start without one (/health is liveness only; /health/ready would report the database).
             run_args: -e ASPNETCORE_ENVIRONMENT=Development -p 8080:8080
             health_url: http://localhost:8080/health
           - name: simulator

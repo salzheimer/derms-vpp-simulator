@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- xUnit v3 on Microsoft.Testing.Platform: the test project is an executable (.ai/rules/testing.md). -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- GridTopology against a real PostgreSQL in a throwaway container (needs Docker): handler and contract level
+       through the module's services, endpoint level through the host in memory (.ai/rules/testing.md section 4).
+       EF Core, Npgsql, and Serilog come transitively from these references. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Rva.Backend\Rva.Host\Rva.Host.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Rva.SharedKernel\Rva.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Modules\Rva.Modules.GridTopology\Rva.Modules.GridTopology.csproj" />
+  </ItemGroup>
+
+</Project>

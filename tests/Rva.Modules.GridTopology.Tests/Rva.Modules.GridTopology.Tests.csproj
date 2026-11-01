@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- xUnit v3 on Microsoft.Testing.Platform: the test project is an executable (.ai/rules/testing.md). -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Unit tests for the GridTopology module and the shared-kernel types its contracts use: no Docker, no database
+       (.ai/rules/testing.md section 4). Module internals are visible through InternalsVisibleTo. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Rva.Backend\Rva.SharedKernel\Rva.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Rva.Backend\Modules\Rva.Modules.GridTopology\Rva.Modules.GridTopology.csproj" />
+  </ItemGroup>
+
+</Project>
