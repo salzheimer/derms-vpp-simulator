@@ -19,6 +19,7 @@ Which test framework each part of the repo uses, and where tests live. This appl
   | `TngTech.ArchUnitNET.xUnitV3` | architecture rules on compiled assemblies (`tests/Rva.ArchitectureTests`) |
   | `Microsoft.AspNetCore.Mvc.Testing` | `WebApplicationFactory<Program>`: starts the real host in memory (`tests/Rva.Host.Tests`) |
   | `Microsoft.Testing.Extensions.CodeCoverage` | code coverage (`--coverage`) |
+  | `Testcontainers.PostgreSql` | throwaway PostgreSQL containers for module integration tests (`tests/Rva.Modules.<Area>.Integration.Tests`); see section 4 |
 
 * **Package versions:** every version is pinned in the root `Directory.Packages.props`, the only such file in the repo. `PackageReference` items carry no `Version` or `VersionOverride`; restore rejects `VersionOverride` (`CentralPackageVersionOverrideEnabled` is false). No file may set `ManagePackageVersionsCentrally` to false.
 * **Cancellation:** pass `TestContext.Current.CancellationToken` to async calls that accept a token. The xUnit analyzer (xUnit1051) warns otherwise, and the build should have no warnings.
@@ -32,14 +33,17 @@ pgTAP, run by `infrastructure/postgres/tests/run_tests.sh`. The conventions (one
 
 pytest, with `pytest-asyncio` for async code (both in `requirements-dev.txt`). Not `unittest` test classes, nose, or other runners. Not enforced yet: the sidecar has no test tooling configured, so enforcement is added with it.
 
-## 4. Not decided yet
+## 4. Module tests
 
-These have not been chosen. Do not add a package for them without a human decision recorded here:
+Decided 2026-10-30 (`.ai/plans/P1_S01_GRID_TOPOLOGY_PLAN.md`, D1–D4). Changing any of these is a human decision, recorded here first.
 
-* **Test doubles:** hand-written fakes or a mocking library. The existing guidance for domain rules says a fake `IGridTopologyQueries` (`docs/architecture/model-validation-scenarios.md`).
-* **Assertion library:** use xUnit's `Assert` until one is chosen.
-* **Database integration tests from .NET:** Testcontainers or the compose stack. Needed in Phase 1 Step 1, when the first module gets a `DbContext`.
-* **Project layout per module:** one test project per module, or shared ones.
+* **Project layout (D3):** two test projects per module:
+  * `tests/Rva.Modules.<Area>.Tests`: unit tests (domain rules, derivations, `Result` mapping). No Docker, no database.
+  * `tests/Rva.Modules.<Area>.Integration.Tests`: tests against a real PostgreSQL, at handler or contract level and at endpoint level (the host in memory through `WebApplicationFactory<Program>`).
+* **Database integration tests (D1):** `Testcontainers.PostgreSql`, running the test image built from `infrastructure/postgres/tests/Dockerfile` (PostGIS, pgTAP, psql). `infrastructure/postgres/core` is bind-mounted over the whole init directory, as in compose. Fixtures come from `infrastructure/postgres/tests/fixtures/`, loaded with psql inside the container, so the pgTAP and .NET suites share one source of fixtures. The tests need Docker (`.ai/scripts/verify.md`). The compose stack is never used by tests.
+* **Test doubles (D2):** hand-written fakes, for example a fake `IGridTopologyQueries`, `IIntegrationEventPublisher`, or `TimeProvider`. No mocking library.
+* **Assertions (D4):** xUnit's `Assert` only. No assertion library.
+* **Other packages:** a test project still declares only the approved packages above. Packages it needs at runtime (EF Core, Npgsql, Serilog, the base Testcontainers package) come transitively from the projects it references.
 
 ## Enforcement
 
@@ -53,7 +57,7 @@ The rules:
 * there is exactly one `Directory.Packages.props`, at the root;
 * central package management is never switched off, and no package reference carries an inline version;
 * no forbidden package (the VSTest stack, other frameworks) appears anywhere;
-* any project that references a test package or sets `IsTestProject` lives under `tests/`, references `xunit.v3`, and references **only** the approved test packages above. A mocking library, assertion library, or Testcontainers package therefore fails until it is approved and added to the table and to `TestFrameworkRules.ApprovedTestPackages`. Without the `global.json` opt-in, `dotnet test` stops with an SDK error rather than running zero tests.
+* any project that references a test package or sets `IsTestProject` lives under `tests/`, references `xunit.v3`, and references **only** the approved test packages above. A mocking library or assertion library therefore fails until it is approved and added to the table and to `TestFrameworkRules.ApprovedTestPackages`. A Testcontainers package makes a project a test project, so it may only be used under `tests/`. Without the `global.json` opt-in, `dotnet test` stops with an SDK error rather than running zero tests.
 
 These checks run in two places. The local hook gives early feedback, but anyone can skip it. Enforcement happens on the server:
 

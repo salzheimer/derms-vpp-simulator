@@ -67,12 +67,25 @@ public class TestFrameworkRulesTests
     [Theory]
     [InlineData("Moq")]
     [InlineData("FluentAssertions")]
-    [InlineData("Testcontainers.PostgreSql")]
+    [InlineData("NSubstitute")]
+    [InlineData("Testcontainers.MsSql")]
     public void Unapproved_package_in_a_test_project_is_rejected(string package) =>
         Assert.Contains(
             ViolationsReplacing("tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj",
                 TestProject("tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj", "xunit.v3", package)),
             v => v.StartsWith($"tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj: {package} is not on the approved test package list"));
+
+    [Fact]
+    public void Approved_Testcontainers_package_is_accepted_in_a_test_project() =>
+        Assert.Empty(ViolationsReplacing("tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj",
+            TestProject("tests/Rva.ArchitectureTests/Rva.ArchitectureTests.csproj", "xunit.v3", "Testcontainers.PostgreSql")));
+
+    [Fact]
+    public void Testcontainers_package_outside_tests_folder_is_rejected() =>
+        Assert.Contains(
+            ViolationsReplacing("src/Rva.Backend/Rva.Host/Rva.Host.csproj",
+                TestProject("src/Rva.Backend/Rva.Host/Rva.Host.csproj", "Serilog.AspNetCore", "Testcontainers.PostgreSql")),
+            v => v.StartsWith("src/Rva.Backend/Rva.Host/Rva.Host.csproj: test projects live under tests/"));
 
     [Fact]
     public void Approved_list_does_not_apply_to_non_test_projects() =>

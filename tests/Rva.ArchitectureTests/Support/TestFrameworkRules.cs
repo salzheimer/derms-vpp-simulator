@@ -56,13 +56,13 @@ public static class TestFrameworkRules
     ];
 
     // The only packages a test project may reference: the table in .ai/rules/testing.md section 1. Adding one is a
-    // human decision, recorded there first (e.g. a mocking library or Testcontainers).
+    // human decision, recorded there first (e.g. a mocking library).
     public static readonly string[] ApprovedTestPackages =
-        [Framework, "TngTech.ArchUnitNET.xUnitV3", "Microsoft.AspNetCore.Mvc.Testing", "Microsoft.Testing.Extensions.CodeCoverage"];
+        [Framework, "TngTech.ArchUnitNET.xUnitV3", "Microsoft.AspNetCore.Mvc.Testing", "Microsoft.Testing.Extensions.CodeCoverage", "Testcontainers.PostgreSql"];
 
     // Packages that make a project a test project, whichever framework they belong to.
     private static readonly string[] TestPackagePrefixes =
-        ["xunit", "NUnit", "MSTest", "TUnit", "Microsoft.NET.Test.Sdk", "Microsoft.Testing.", "TngTech.ArchUnitNET.", "Microsoft.AspNetCore.Mvc.Testing"];
+        ["xunit", "NUnit", "MSTest", "TUnit", "Microsoft.NET.Test.Sdk", "Microsoft.Testing.", "TngTech.ArchUnitNET.", "Microsoft.AspNetCore.Mvc.Testing", "Testcontainers"];
 
     public static IReadOnlyList<string> Violations(IReadOnlyCollection<BuildFile> files)
     {
