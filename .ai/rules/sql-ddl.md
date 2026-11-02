@@ -72,7 +72,7 @@ Follow `.ai/rules/csharp-monolith.md` section 9: edited state is system-versione
 
 ## 6. Scripts
 
-* Scripts are re-runnable: `CREATE ... IF NOT EXISTS`, `CREATE OR REPLACE` for functions and triggers, `INSERT ... ON CONFLICT (<natural key>) DO NOTHING` for seed rows.
+* Scripts are re-runnable: `CREATE ... IF NOT EXISTS`, `CREATE OR REPLACE` for functions and triggers, `INSERT ... ON CONFLICT (<natural key>) DO NOTHING` for seed rows. Exception: a table with a `BEFORE INSERT` trigger that writes elsewhere (the grid node tables, whose trigger registers a `topology.grid_nodes` row) is seeded with `INSERT ... SELECT ... WHERE NOT EXISTS (<natural key>)`. The trigger fires before `ON CONFLICT` is checked, so `DO NOTHING` would leave an orphan row on every re-run.
 * Keep each schema's objects in dependency order: lookups, tables, comments, triggers, versioning, seeds, outbox, self-check.
 * The init scripts only run on an empty database. Changing a deployed schema needs a migration tool (`PHASE_1_PLAN.md`, Digital twin readiness); the same rules apply to migrations.
 * When the schema changes, update `docs/architecture/data-model.md` (the ERDs) in the same pull request.

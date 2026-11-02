@@ -9,6 +9,10 @@ public sealed class TestDatabase(string connectionString)
 {
     public string ConnectionString { get; } = connectionString;
 
+    /// <summary>The database's name, ex. for psql inside the container.</summary>
+    public string Name { get; } = new NpgsqlConnectionStringBuilder(connectionString).Database
+        ?? throw new ArgumentException("The connection string names no database.", nameof(connectionString));
+
     /// <summary>The same database, with extra connection string settings, ex. "Command Timeout=2".</summary>
     public string ConnectionStringWith(string settings) => ConnectionString + ";" + settings;
 
