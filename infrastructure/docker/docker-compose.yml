@@ -2,7 +2,7 @@
 #   docker compose -f infrastructure/docker/docker-compose.yml up -d
 # Credentials come from infrastructure/docker/.env (copy .env.example); the defaults below are for local development only.
 # Init scripts run only when a database volume is empty: after changing one, recreate with `docker compose ... down -v`.
-
+name: vpp_derms_simulator
 services:
   # 1. Core Relational Database (PostgreSQL + PostGIS): topology and simulation schemas
   rva-core-db:
