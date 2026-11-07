@@ -77,13 +77,13 @@ Delivered in parts, one branch and pull request each. The module structure, deci
 
 | Part | Scope | Status |
 |---|---|---|
-| `p1-s01a` | Foundation: test package decisions, shared kernel types, `DbContext` and mappings, change context, error classification, readiness check, test projects and the database test harness | Done (PR #16) |
-| `p1-s01b` | Catalog and development seed (protocol mappings, hardware profiles, sample Portland topology); `ResolveTechnologyType`, `GetProtocolMappings` | Not started |
-| `p1-s01c` | Reads: `GetAsset`, `GetAssetsBySubstation`, `GetSubstationTree`, `GetConstraintPath`, `ResolveNode`, as-of reads | Not started |
-| `p1-s01d` | Grid state: `RecordGridStateEvent`, `GetGridState`, effective state and eligibility | Not started |
-| `p1-s01e` | Asset writes: `RegisterAsset`, `ChangeAssetLifecycle`, `ChangeParticipation`, events written to the outbox | Not started |
-| `p1-s01f` | Outbox relay delivering the integration events | Not started |
-| `p1-s01g` | `GetTopologySnapshot` for `Rva.Simulator` | Not started |
+| `p1-s01a` | Foundation: test package decisions, shared kernel types, `DbContext` and mappings, change context, error classification, readiness check, test projects and the database test harness | See [GridTopology plan](P1_S01_GRID_TOPOLOGY_PLAN.md#5-parts) |
+| `p1-s01b` | Catalog and development seed (protocol mappings, hardware profiles, sample Portland topology); `ResolveTechnologyType`, `GetProtocolMappings` | See [GridTopology plan](P1_S01_GRID_TOPOLOGY_PLAN.md#5-parts) |
+| `p1-s01c` | Reads: `GetAsset`, `GetAssetsBySubstation`, `GetSubstationTree`, `GetConstraintPath`, `ResolveNode`, as-of reads | See [GridTopology plan](P1_S01_GRID_TOPOLOGY_PLAN.md#5-parts) |
+| `p1-s01d` | Grid state: `RecordGridStateEvent`, `GetGridState`, effective state and eligibility | See [GridTopology plan](P1_S01_GRID_TOPOLOGY_PLAN.md#5-parts) |
+| `p1-s01e` | Asset writes: `RegisterAsset`, `ChangeAssetLifecycle`, `ChangeParticipation`, events written to the outbox | See [GridTopology plan](P1_S01_GRID_TOPOLOGY_PLAN.md#5-parts) |
+| `p1-s01f` | Outbox relay delivering the integration events | See [GridTopology plan](P1_S01_GRID_TOPOLOGY_PLAN.md#5-parts) |
+| `p1-s01g` | `GetTopologySnapshot` for `Rva.Simulator` | See [GridTopology plan](P1_S01_GRID_TOPOLOGY_PLAN.md#5-parts) |
 
 * **Modeling principles:**
   * **An asset is a grid-facing controllable resource:** everything behind **one control interface**, at **one connection point**, with **one rating at that point**. A DC-coupled Powerwall 3 home with PV is one asset; an Enphase PV + battery system behind one IQ Gateway is one asset; Tesla batteries plus SolarEdge PV at the same home are two assets.
