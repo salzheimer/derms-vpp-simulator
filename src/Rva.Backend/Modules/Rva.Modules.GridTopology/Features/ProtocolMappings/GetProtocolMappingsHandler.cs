@@ -20,8 +20,8 @@ internal sealed class GetProtocolMappingsHandler(GridTopologyDbContext db)
             return invalid;
 
         var rows = await (
-                from m in ProtocolMappingReads.Mappings(db, asOf)
-                join t in ProtocolMappingReads.TechnologyTypes(db, asOf) on m.TechnologyTypeId equals t.Id
+                from m in AsOfReads.ProtocolMappings(db, asOf)
+                join t in AsOfReads.TechnologyTypes(db, asOf) on m.TechnologyTypeId equals t.Id
                 where m.ProtocolStandard == standard.Value
                 orderby m.ResourceCategory, m.AssetTypeCode
                 select new { Technology = t.Code, m.ResourceCategory, m.AssetTypeCode, m.ExtraAttributes })

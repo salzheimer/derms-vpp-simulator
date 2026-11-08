@@ -37,6 +37,7 @@ internal sealed class LookupCatalog(IServiceScopeFactory scopeFactory)
 
     private readonly SemaphoreSlim loadGate = new(1, 1);
     private IReadOnlyDictionary<LookupTable, IReadOnlyDictionary<string, int>>? loaded;
+    private LookupCodes? codes;
 
     public static string TableName(LookupTable table) => table switch
     {
@@ -60,6 +61,19 @@ internal sealed class LookupCatalog(IServiceScopeFactory scopeFactory)
         return codes.TryGetValue(code, out var id)
             ? id
             : throw new InvalidOperationException($"Lookup code '{code}' is missing from {GridTopologyDbContext.Schema}.{TableName(table)}.");
+    }
+
+    /// <summary>Codes by id for every lookup table, for turning the ids in a row into the codes snapshots carry.</summary>
+    public async Task<LookupCodes> CodesAsync(CancellationToken cancellationToken)
+    {
+        if (Volatile.Read(ref codes) is { } cached)
+            return cached;
+
+        var inverted = new LookupCodes((await LoadAsync(cancellationToken)).ToDictionary(
+            t => t.Key,
+            t => (IReadOnlyDictionary<int, string>)t.Value.ToDictionary(e => e.Value, e => e.Key)));
+        Volatile.Write(ref codes, inverted);
+        return inverted;
     }
 
     public async Task<IReadOnlyDictionary<LookupTable, IReadOnlyDictionary<string, int>>> LoadAsync(CancellationToken cancellationToken)
@@ -108,4 +122,17 @@ internal sealed class LookupCatalog(IServiceScopeFactory scopeFactory)
     private static async Task<IReadOnlyDictionary<string, int>> ReadAsync<T>(DbSet<T> table, CancellationToken cancellationToken)
         where T : LookupEntry =>
         await table.AsNoTracking().ToDictionaryAsync(e => e.Code, e => e.Id, StringComparer.Ordinal, cancellationToken);
+}
+
+/// <summary>Lookup codes by id, from <see cref="LookupCatalog.CodesAsync"/>.</summary>
+internal sealed class LookupCodes(IReadOnlyDictionary<LookupTable, IReadOnlyDictionary<int, string>> codes)
+{
+    /// <summary>
+    /// The code of row <paramref name="id"/> in <paramref name="table"/>. A row referencing an id the table does not
+    /// have is a broken deployment (the foreign keys prevent it), so it throws.
+    /// </summary>
+    public string Of(LookupTable table, int id) =>
+        codes[table].TryGetValue(id, out var code)
+            ? code
+            : throw new InvalidOperationException($"Lookup id {id} is missing from {GridTopologyDbContext.Schema}.{LookupCatalog.TableName(table)}.");
 }

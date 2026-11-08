@@ -20,6 +20,12 @@ internal sealed class TopologyHostFactory(
 {
     public SerilogCapture Logs { get; } = new();
 
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        TestDatabase.ReleaseConnections(coreConnectionString);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");

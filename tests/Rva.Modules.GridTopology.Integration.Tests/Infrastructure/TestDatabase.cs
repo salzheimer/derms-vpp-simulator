@@ -41,6 +41,20 @@ public sealed class TestDatabase(string connectionString)
     internal GridTopologyDbContext CreateContext() =>
         new(((DbContextOptionsBuilder<GridTopologyDbContext>)GridTopologyDbContext.Configure(new DbContextOptionsBuilder<GridTopologyDbContext>(), ConnectionString)).Options);
 
+    /// <summary>
+    /// Closes the idle pooled connections to this database. Each test database has its own pool, and idle connections
+    /// would otherwise stay open after the test, adding up to the server's connection limit over a run.
+    /// </summary>
+    public static void ReleaseConnections(string connectionString)
+    {
+        using var connection = new NpgsqlConnection(connectionString);
+        NpgsqlConnection.ClearPool(connection);
+    }
+
+    /// <summary>The database clock (<c>clock_timestamp()</c>), which stamps every version, in UTC.</summary>
+    public async Task<DateTimeOffset> NowAsync(CancellationToken cancellationToken) =>
+        new(DateTime.SpecifyKind(await ScalarAsync<DateTime>("SELECT clock_timestamp()", cancellationToken), DateTimeKind.Utc));
+
     /// <summary>Rows in a table, ex. a _history table, for "nothing was written" checks (U1).</summary>
     public Task<long> CountAsync(string table, CancellationToken cancellationToken) =>
         ScalarAsync<long>($"SELECT count(*) FROM {table}", cancellationToken);
