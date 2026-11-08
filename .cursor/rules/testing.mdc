@@ -1,0 +1,16 @@
+---
+description: xUnit v3, pgTAP, and pytest standards, including approved test packages
+globs: tests/**/*,Directory.Packages.props,global.json,infrastructure/postgres/tests/**/*,src/Rva.Intelligence/**/test_*.py,src/Rva.Intelligence/**/*_test.py
+alwaysApply: false
+---
+
+# Testing
+
+Read @.ai/rules/testing.md before adding or changing a test project, test package, or test. That file is the canonical testing standard.
+
+- .NET tests use xUnit v3 on Microsoft.Testing.Platform. Do not add the VSTest stack, NUnit, MSTest, or TUnit.
+- Test projects live under `tests/`, set `<OutputType>Exe</OutputType>`, reference `xunit.v3`, and are listed in `VppAggregator.slnx`.
+- Versions are pinned only in the root `Directory.Packages.props`. A test project may reference only the approved test packages in that file. No mocking library and no assertion library. Use hand-written fakes and xUnit `Assert`.
+- Module unit tests do not use Docker. Integration tests use `Testcontainers.PostgreSql` and the shared fixtures, not the compose stack.
+- Pass `TestContext.Current.CancellationToken` into async calls. Wait on a `TaskCompletionSource` with `WaitAsync`. Do not use `Task.Delay` or `Thread.Sleep`.
+- Database test conventions are in @.ai/rules/sql-ddl.md section 7. Python tests use pytest. Do not weaken `TestFrameworkTests`, skip hooks with `--no-verify`, or merge while `test-guardrail` is failing.

@@ -1,1 +1,4 @@
-See AGENTS.md at the repo root for project context, architecture, and conventions, and .ai/rules/ for topic-specific detail (C# monolith, Python sidecar, testing, domain glossary, security). Read those before making changes — do not treat this file as the source of instructions.
+# Cursor System Rules
+See configuration and routing instructions in:
+- @claude.md
+- @agents.md

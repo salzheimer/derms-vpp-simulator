@@ -1,0 +1,17 @@
+---
+description: C# modular monolith layout, module ownership, shared kernel, and persistence
+globs: src/Rva.Backend/**/*.cs,src/Rva.Backend/**/*.csproj,tests/Rva.ArchitectureTests/**/*.cs,VppAggregator.slnx
+alwaysApply: false
+---
+
+# C# modular monolith
+
+Read @.ai/rules/csharp-monolith.md before changing the backend. That file is the canonical architecture standard.
+
+- The C# core decides grid state, security, and dispatch. Sidecar output is a recommendation behind a Polly circuit breaker with a Safe-Fail default.
+- Modules are separate projects. A module may reference `Rva.SharedKernel`, its own `.Contracts`, and other modules' `.Contracts`. `.Contracts` may reference only `Rva.SharedKernel`. `Rva.Simulator` and `Rva.Intelligence` never reference backend projects.
+- A module owns its entities and its `DbContext`. No cross-module foreign keys, and no use of another module's entities or tables. Safety-critical reads go through the owning module's query interface.
+- Slice by feature (`Features/`, `Domain/`, `Persistence/`). No `Controllers/`, `Services/`, or `Repositories/` folders. Map entities with Fluent API only.
+- Add a type to `Rva.SharedKernel` only when a second module needs it, and only if it is immutable, has no identity, and depends on nothing but the base class library.
+- Expected failures return `Result`. Edited state is system-versioned; events are append-only. Set `rva.actor`, `rva.actor_type`, and `rva.change_reason` in the command transaction. Use `clock_timestamp()`.
+- `tests/Rva.ArchitectureTests` enforces these structural rules. Do not weaken those tests.
