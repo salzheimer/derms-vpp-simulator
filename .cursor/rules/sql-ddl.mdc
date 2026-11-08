@@ -1,0 +1,15 @@
+---
+description: PostgreSQL DDL comments, naming, types, module schemas, and pgTAP tests
+globs: infrastructure/postgres/**/*.sql,docs/architecture/data-model.md,docs/architecture/model-validation-scenarios.md
+alwaysApply: false
+---
+
+# SQL DDL
+
+Read @.ai/rules/sql-ddl.md before writing or changing PostgreSQL DDL. That file is the canonical DDL standard. Rules marked [lint] there are checked by `infrastructure/postgres/tests/ddl_lint.sql`.
+
+- Every table and every column has a `COMMENT`. A column comment is a purpose sentence ending in a facts tag the lint compares to the catalog. History comments come from `topology.enable_versioning`, not from hand-written copies.
+- Use lowercase `snake_case` and plural table names. Name constraints `pk_`, `uk_`, `ck_`, `fk_`, or `ex_`; indexes `ix_` or `ux_`; triggers `trg_`. Put units in the column name.
+- Entity keys are `BIGINT GENERATED ALWAYS AS IDENTITY`. Timestamps are `TIMESTAMPTZ` defaulting to `clock_timestamp()`. Use `JSONB`, lookup tables instead of `ENUM`, and no cross-schema foreign keys. A cross-module id is documented with `REF` and validated through the owning module's `.Contracts`.
+- Scripts are re-runnable. Edited state is system-versioned; events reject `UPDATE` and `DELETE`. Follow section 9 of @.ai/rules/csharp-monolith.md.
+- Write the pgTAP test first. Run `infrastructure/postgres/tests/run_tests.sh` before a pull request. Do not weaken the lint. Update `docs/architecture/data-model.md` in the same change.
