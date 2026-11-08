@@ -21,7 +21,7 @@ internal sealed class ResolveNodeHandler(GridTopologyDbContext db, TimeProvider 
                 $"Unknown grid node level '{level}'; expected one of {string.Join(", ", GridNodeLevels.All)}.");
         if (string.IsNullOrWhiteSpace(code))
             return Error.Validation(GridTopologyErrors.NodeQueryInvalid, "A node code is required.");
-        if (AsOf.CheckNotInFuture(asOf, time) is { } invalid)
+        if (await AsOf.CheckNotInFutureAsync(asOf, time, db, cancellationToken) is { } invalid)
             return invalid;
 
         var ids = level switch

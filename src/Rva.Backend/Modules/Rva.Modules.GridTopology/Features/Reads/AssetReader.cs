@@ -34,7 +34,11 @@ internal sealed partial class AssetReader(GridTopologyDbContext db, LookupCatalo
     /// The assets <paramref name="select"/> picks from the asset table as of <paramref name="asOf"/>, in the order it
     /// gives them. <paramref name="select"/> only filters and orders; the rest is loaded here.
     /// </summary>
-    public async Task<Result<IReadOnlyList<Readout>>> ReadAsync(
+    public Task<Result<IReadOnlyList<Readout>>> ReadAsync(
+        Func<IQueryable<Asset>, IQueryable<Asset>> select, DateTimeOffset? asOf, CancellationToken cancellationToken) =>
+        AsOfReads.InOneVersionAsync(db, asOf, () => ReadInOneVersionAsync(select, asOf, cancellationToken), cancellationToken);
+
+    private async Task<Result<IReadOnlyList<Readout>>> ReadInOneVersionAsync(
         Func<IQueryable<Asset>, IQueryable<Asset>> select, DateTimeOffset? asOf, CancellationToken cancellationToken)
     {
         var rows = await select(AsOfReads.Assets(db, asOf))

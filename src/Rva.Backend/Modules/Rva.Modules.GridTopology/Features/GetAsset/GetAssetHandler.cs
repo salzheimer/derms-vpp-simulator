@@ -1,6 +1,7 @@
 using Rva.Modules.GridTopology.Contracts;
 using Rva.Modules.GridTopology.Contracts.Snapshots;
 using Rva.Modules.GridTopology.Features.Reads;
+using Rva.Modules.GridTopology.Persistence;
 using Rva.SharedKernel.Identifiers;
 using Rva.SharedKernel.Results;
 
@@ -10,7 +11,7 @@ namespace Rva.Modules.GridTopology.Features.GetAsset;
 /// <see cref="IGridTopologyQueries.GetAssetAsync"/> by id, and the <c>GET /api/topology/assets/{code}</c> endpoint by
 /// code: one asset, current or as of a time, in any lifecycle state.
 /// </summary>
-internal sealed class GetAssetHandler(AssetReader reader, TimeProvider time)
+internal sealed class GetAssetHandler(GridTopologyDbContext db, AssetReader reader, TimeProvider time)
 {
     public Task<Result<AssetSnapshot>> HandleAsync(AssetId assetId, DateTimeOffset? asOf, CancellationToken cancellationToken) =>
         ReadOneAsync(assets => assets.Where(a => a.Id == assetId), $"No asset has id {assetId}", asOf, cancellationToken);
@@ -22,7 +23,7 @@ internal sealed class GetAssetHandler(AssetReader reader, TimeProvider time)
         Func<IQueryable<Domain.Assets.Asset>, IQueryable<Domain.Assets.Asset>> select, string notFound, DateTimeOffset? asOf,
         CancellationToken cancellationToken)
     {
-        if (AsOf.CheckNotInFuture(asOf, time) is { } invalid)
+        if (await AsOf.CheckNotInFutureAsync(asOf, time, db, cancellationToken) is { } invalid)
             return invalid;
 
         var read = await reader.ReadAsync(select, asOf, cancellationToken);

@@ -67,6 +67,24 @@ internal static class AsOfReads
             ? db.TechnologyTypes.FromSql($"SELECT * FROM topology.technology_types_as_of({at.ToUniversalTime()})").AsNoTracking()
             : db.TechnologyTypes.AsNoTracking();
 
+    /// <summary>
+    /// Runs a read made of several statements so they all see one version of the topology. As of a time, the
+    /// <c>_as_of</c> functions already give that. For a current read, the statements run in one REPEATABLE READ
+    /// transaction, so a change committed between them cannot mix versions in one constraint path. The transaction
+    /// writes nothing and gets no change context (that is set only inside a unit of work).
+    /// </summary>
+    public static async Task<T> InOneVersionAsync<T>(
+        GridTopologyDbContext db, DateTimeOffset? asOf, Func<Task<T>> read, CancellationToken cancellationToken)
+    {
+        if (asOf is not null || db.Database.CurrentTransaction is not null)
+            return await read();
+
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, cancellationToken);
+        var result = await read();
+        await transaction.CommitAsync(cancellationToken);
+        return result;
+    }
+
     /// <summary>The database's clock, which stamps every version: the time "now" means for a pinned read.</summary>
     public static async Task<DateTimeOffset> DatabaseNowAsync(GridTopologyDbContext db, CancellationToken cancellationToken) =>
         new(DateTime.SpecifyKind(

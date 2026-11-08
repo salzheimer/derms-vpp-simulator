@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Rva.Modules.GridTopology.Contracts;
 using Rva.Modules.GridTopology.Contracts.Snapshots;
 using Rva.Modules.GridTopology.Integration.Tests.Hosting;
@@ -62,20 +63,26 @@ public class GetAssetTests(PostgresContainerFixture postgres)
         await using var context = await ReadContext.CreateAsync(postgres);
         var id = await context.AssetIdAsync("FXD-HOME-01-BESS");
 
+        var validFrom = await context.Database.ScalarAsync<DateTime>(
+            "SELECT lower(sys_period) FROM topology.assets WHERE asset_code = 'FXD-HOME-01-BESS'", Token);
+
         var asset = (await context.QueryAsync(q => q.GetAssetAsync(id, null, Token))).Value;
 
         var premise = new GridNodeRef(await context.GridNodeIdAsync("premises", "FXD-HOME-01"), GridNodeLevels.Premise, "FXD-HOME-01");
-        Assert.Equal(premise, asset.Connection);
-        Assert.Equal("FXD-SUB", asset.SubstationCode);
-        Assert.Equal(new SiteSnapshot(premise, "residential", new KilovoltAmperes(48), null, CanIsland: false), asset.Site);
-        Assert.Equal(new MicrogridSnapshot(
+        var expected = new AssetSnapshot(
+            id, "FXD-HOME-01-BESS", premise,
+            new SubstationId(await context.Database.ScalarAsync<long>("SELECT substation_id FROM topology.substations WHERE substation_code = 'FXD-SUB'", Token)),
+            "FXD-SUB", new InterconnectionTypeCode("btm"),
+            new Kilowatts(-7.6), new Kilowatts(7.6), new KilovoltAmperes(7.6), null,
+            new SiteSnapshot(premise, "residential", new KilovoltAmperes(48), null, CanIsland: false),
+            new MicrogridSnapshot(
                 new GridNodeRef(await context.GridNodeIdAsync("microgrids", "FXD-MG"), GridNodeLevels.Microgrid, "FXD-MG"),
                 new Kilowatts(1000), new Kilowatts(500), CanIsland: true),
-            asset.Microgrid);
-        Assert.Equal("VendorA", asset.ControlManufacturer);
-        // Fixture D's homes record no components: makeup and energy are unknown, not zero.
-        Assert.Null(asset.Makeup);
-        Assert.Null(asset.EnergyCapacityKwh);
+            // Fixture D's homes record no components: makeup and energy are unknown, not zero.
+            null, null,
+            "VendorA", "commissioned", "active",
+            new DateTimeOffset(DateTime.SpecifyKind(validFrom, DateTimeKind.Utc)));
+        Assert.Equal(expected, asset);
     }
 
     [Fact]
@@ -199,6 +206,28 @@ public class GetAssetTests(PostgresContainerFixture postgres)
         var result = await context.QueryAsync(q => q.GetAssetAsync(id, DateTimeOffset.UtcNow.AddMinutes(5), Token));
 
         Assert.Equal((ErrorKind.Validation, GridTopologyErrors.AsOfInFuture), (result.Error.Kind, result.Error.Code));
+    }
+
+    [Fact]
+    public async Task A_database_time_ahead_of_the_app_clock_is_not_in_the_future()
+    {
+        // FI-8 in reverse: the app clock an hour behind the database clock, which stamps every version and is the
+        // clock callers' times come from (ex. a simulation run's topology_as_of).
+        await using var context = await ReadContext.CreateAsync(postgres, configure: services =>
+            services.AddSingleton<TimeProvider>(new ShiftedTime(TimeSpan.FromHours(-1))));
+        var id = await context.AssetIdAsync("FXA-ASSET");
+        var databaseNow = await context.NowAsync();
+
+        var now = await context.QueryAsync(q => q.GetAssetAsync(id, databaseNow, Token));
+        var ahead = await context.QueryAsync(q => q.GetAssetAsync(id, databaseNow.AddMinutes(5), Token));
+
+        Assert.True(now.IsSuccess);
+        Assert.Equal(GridTopologyErrors.AsOfInFuture, ahead.Error.Code);
+    }
+
+    private sealed class ShiftedTime(TimeSpan shift) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => TimeProvider.System.GetUtcNow() + shift;
     }
 
     // ------------------------------------------------------------------ endpoint

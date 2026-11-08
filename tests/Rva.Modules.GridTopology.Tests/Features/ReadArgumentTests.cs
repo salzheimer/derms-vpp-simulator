@@ -32,14 +32,14 @@ public class ReadArgumentTests
         Assert.Equal(GridTopologyErrors.AsOfInvalid, AsOf.Parse(value).Error.Code);
 
     [Fact]
-    public void A_future_as_of_is_rejected_and_the_present_is_not()
+    public void Only_a_time_after_now_is_in_the_future()
     {
-        var time = new FixedTime(new DateTimeOffset(2026, 11, 7, 8, 0, 0, TimeSpan.Zero));
+        var now = new DateTimeOffset(2026, 11, 7, 8, 0, 0, TimeSpan.Zero);
 
-        Assert.Null(AsOf.CheckNotInFuture(null, time));
-        Assert.Null(AsOf.CheckNotInFuture(time.GetUtcNow(), time));
-        Assert.Null(AsOf.CheckNotInFuture(time.GetUtcNow().AddDays(-1), time));
-        Assert.Equal(GridTopologyErrors.AsOfInFuture, AsOf.CheckNotInFuture(time.GetUtcNow().AddTicks(10), time)?.Code);
+        Assert.False(AsOf.IsAfter(now, now));
+        Assert.False(AsOf.IsAfter(now.AddDays(-1), now));
+        Assert.False(AsOf.IsAfter(now.ToOffset(TimeSpan.FromHours(-8)), now));   // the same instant at another offset
+        Assert.True(AsOf.IsAfter(now.AddTicks(10), now));
     }
 
     [Fact]
@@ -62,9 +62,4 @@ public class ReadArgumentTests
     [InlineData("djE6MToxOjE6MQ")]       // "v1:1:1:1:1": too many parts
     public void A_cursor_this_module_did_not_issue_does_not_decode(string value) =>
         Assert.Null(AssetPageCursor.TryDecode(value));
-
-    private sealed class FixedTime(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
-    }
 }

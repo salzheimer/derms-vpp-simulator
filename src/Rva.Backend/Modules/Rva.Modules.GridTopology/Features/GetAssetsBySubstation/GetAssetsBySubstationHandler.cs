@@ -29,7 +29,7 @@ internal sealed class GetAssetsBySubstationHandler(GridTopologyDbContext db, Ass
             if (after is null || (asOf is { } given && AssetPageCursor.ToMicros(given) != after.AsOfMicros))
                 return CursorInvalid();
         }
-        else if (AsOf.CheckNotInFuture(asOf, time) is { } invalid)
+        else if (await AsOf.CheckNotInFutureAsync(asOf, time, db, cancellationToken) is { } invalid)
         {
             return invalid;
         }

@@ -117,6 +117,15 @@ The main snapshot records:
 
 `GeoPoint` and `GeoLine` are plain records here, not NetTopologySuite types, because Contracts may reference only the shared kernel. Lifecycle, participation, and grid states are string codes, not enums, following the reference-code rule.
 
+As built in `p1-s01c` (the final contract is in `docs/architecture/module-contracts.md`):
+- **Site and microgrid limits** are grouped as `SiteSnapshot` (premise ref, customer segment, service capacity, export limit, `CanIsland`) and `MicrogridSnapshot` (microgrid ref, import and export limits, `CanIsland`). Both `AssetSnapshot` and `ConstraintPathSnapshot` carry them, and each is null when it does not apply.
+- **Makeup** is one of the `AssetMakeups` codes. It is null when an asset has no components recorded; `EnergyCapacityKwh` is null when no component records energy.
+- **`GridNodeLevels`** holds the level codes.
+- **`GetAssetsBySubstation`** takes a substation code and returns an `AssetPage`. Its cursor pins the topology version, to the database clock when no `asOf` is given.
+- **Constraint path nodes** run from the connection node up to the substation, and a premise's rating is its service capacity. The microgrid is not a node on the path; it is carried as `Microgrid`. The effective limits are non-negative magnitudes.
+- **`asOf` in the future** is checked against the database clock as well as the app clock, so a time that came from the database clock is never refused because of skew (Q2).
+- **Current reads** (`asOf` null) run in one REPEATABLE READ transaction, so a commit landing between their statements cannot mix versions.
+
 ### Shared kernel additions (`Rva.SharedKernel/`)
 
 The kernel normally grows only when a second module needs a type (`csharp-monolith.md` section 5). Contract signatures can only use kernel types, so this step adds the ones the GridTopology contracts use, and Simulation and Telemetry will reuse them: `Result`, `Result<T>`, `Error` (`Code`, `Message`, `Kind`); `AssetId`, `GridNodeId`, `SubstationId`, `FeederId`, `TransformerId`, `PremiseId`, `MicrogridId`; `Kilowatts`, `KilowattHours`, `KilovoltAmperes`; `TechnologyTypeCode`, `InterconnectionTypeCode`, `ProtocolStandard`. Units reject NaN and infinity. `Volts` is not added; the transformer secondary voltage stays a `double` in the snapshot.
@@ -150,6 +159,8 @@ Fixtures A–D depend on the `pg_temp` helpers in `_helpers.sql`, which also cre
 | Rule | 422 | a domain invariant broken by a reference in the body (unknown connection node, non-FTM above the meter, member outside its microgrid) |
 
 Responses are `application/problem+json` (RFC 9457) with `code` (for example `GridTopology.AssetNotFound`) and `traceId`. Expected failures are logged at Warning or below.
+
+One exception (`p1-s01c`): `GridTopology.ConstraintPathIncomplete` means the stored topology is corrupt (a parent row is missing as of the requested time). Contract callers get it as a `Result` failure of kind Rule, so a safety-relevant read never returns a shorter path (U5). It is logged once at Error where it is found, and an endpoint answers 500 with that code rather than 422, because it is never the client's fault.
 
 **Unexpected failures** are exceptions. In-process contract callers receive the exception; it is not wrapped in a `Result`. Over HTTP, the host's exception handler (`AddProblemDetails` and `UseExceptionHandler`, added in `s01a`) returns 500, or 503 for transient database faults. The database error classifier decides which database errors count as expected:
 - `23505` on `assets.asset_code`: Conflict (two registrations raced).

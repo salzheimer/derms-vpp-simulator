@@ -20,9 +20,14 @@ internal sealed class GetSubstationTreeHandler(GridTopologyDbContext db, LookupC
 {
     public async Task<Result<SubstationTreeResponse>> HandleAsync(string substationCode, DateTimeOffset? asOf, CancellationToken cancellationToken)
     {
-        if (AsOf.CheckNotInFuture(asOf, time) is { } invalid)
+        if (await AsOf.CheckNotInFutureAsync(asOf, time, db, cancellationToken) is { } invalid)
             return invalid;
 
+        return await AsOfReads.InOneVersionAsync(db, asOf, () => ReadTreeAsync(substationCode, asOf, cancellationToken), cancellationToken);
+    }
+
+    private async Task<Result<SubstationTreeResponse>> ReadTreeAsync(string substationCode, DateTimeOffset? asOf, CancellationToken cancellationToken)
+    {
         var substation = await AsOfReads.Substations(db, asOf).SingleOrDefaultAsync(s => s.Code == substationCode, cancellationToken);
         if (substation is null)
             return Error.NotFound(GridTopologyErrors.SubstationNotFound,

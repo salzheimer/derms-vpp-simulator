@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Rva.Modules.GridTopology.Contracts;
+using Rva.Modules.GridTopology.Persistence;
 using Rva.SharedKernel.Results;
 
 namespace Rva.Modules.GridTopology.Features.Reads;
@@ -9,13 +10,25 @@ namespace Rva.Modules.GridTopology.Features.Reads;
 internal static partial class AsOf
 {
     /// <summary>
-    /// A Validation error when <paramref name="asOf"/> is later than now on <paramref name="time"/>: the topology's
-    /// future is unknown, and answering with the current version would claim otherwise. Null when it is acceptable.
+    /// A Validation error when <paramref name="asOf"/> is in the future: the topology's future is unknown, and answering
+    /// with the current version would claim otherwise. Null when it is acceptable.
+    /// <para>
+    /// The database clock stamps every version and is the one callers' times come from (ex. a simulation run's
+    /// <c>topology_as_of</c>), and it may run slightly ahead of this process's clock (Q2). So a time up to the app
+    /// clock is accepted at once, and a later one only if the database clock has reached it.
+    /// </para>
     /// </summary>
-    public static Error? CheckNotInFuture(DateTimeOffset? asOf, TimeProvider time) =>
-        asOf is { } at && at > time.GetUtcNow()
+    public static async Task<Error?> CheckNotInFutureAsync(
+        DateTimeOffset? asOf, TimeProvider time, GridTopologyDbContext db, CancellationToken cancellationToken)
+    {
+        if (asOf is not { } at || !IsAfter(at, time.GetUtcNow()))
+            return null;
+        return IsAfter(at, await AsOfReads.DatabaseNowAsync(db, cancellationToken))
             ? Error.Validation(GridTopologyErrors.AsOfInFuture, $"asOf {Format(at)} is in the future.")
             : null;
+    }
+
+    public static bool IsAfter(DateTimeOffset asOf, DateTimeOffset now) => asOf > now;
 
     /// <summary>
     /// Parses the <c>asOf</c> query parameter: absent or empty means current; otherwise an ISO 8601 date and time with a
