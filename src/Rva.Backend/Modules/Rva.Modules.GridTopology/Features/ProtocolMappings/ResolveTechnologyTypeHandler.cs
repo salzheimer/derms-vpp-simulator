@@ -20,8 +20,8 @@ internal sealed class ResolveTechnologyTypeHandler(GridTopologyDbContext db)
             return invalid;
 
         var code = await (
-                from m in ProtocolMappingReads.Mappings(db, asOf)
-                join t in ProtocolMappingReads.TechnologyTypes(db, asOf) on m.TechnologyTypeId equals t.Id
+                from m in AsOfReads.ProtocolMappings(db, asOf)
+                join t in AsOfReads.TechnologyTypes(db, asOf) on m.TechnologyTypeId equals t.Id
                 where m.ProtocolStandard == standard.Value && m.ResourceCategory == resourceCategory && m.AssetTypeCode == assetTypeCode
                 select t.Code)
             .SingleOrDefaultAsync(cancellationToken);

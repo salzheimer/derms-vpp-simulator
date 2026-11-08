@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Rva.Modules.GridTopology.Contracts;
 using Rva.SharedKernel.Results;
 
 namespace Rva.Modules.GridTopology.Http;
@@ -19,9 +20,19 @@ internal static class ResultHttpMapping
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 
+    /// <summary>
+    /// The status for <paramref name="error"/>: by its kind, except that corrupt stored topology
+    /// (<see cref="GridTopologyErrors.ConstraintPathIncomplete"/>) is the server's fault, never the client's, so 500.
+    /// Its message names asset codes, levels, and ids only, and it was already logged at Error where it was found.
+    /// </summary>
+    public static int StatusCodeOf(Error error) =>
+        error.Code == GridTopologyErrors.ConstraintPathIncomplete
+            ? StatusCodes.Status500InternalServerError
+            : StatusCodeOf(error.Kind);
+
     public static ProblemHttpResult ToProblem(this Error error) =>
         TypedResults.Problem(
             detail: error.Message,
-            statusCode: StatusCodeOf(error.Kind),
+            statusCode: StatusCodeOf(error),
             extensions: new Dictionary<string, object?> { ["code"] = error.Code });
 }

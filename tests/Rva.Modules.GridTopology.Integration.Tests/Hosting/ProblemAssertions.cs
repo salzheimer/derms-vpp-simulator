@@ -17,8 +17,11 @@ internal static class ProblemAssertions
 
         Assert.Equal(status, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        // The module's own error codes (GridTopology.AssetNotFound) are meant for clients; schema names
+        // (topology.assets) are not, so the codes are taken out before looking for leaks.
+        var scanned = body.Replace("GridTopology.", "", StringComparison.Ordinal);
         foreach (var leak in Leaks.Concat(alsoForbidden))
-            Assert.DoesNotContain(leak, body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(leak, scanned, StringComparison.OrdinalIgnoreCase);
 
         using var json = JsonDocument.Parse(body);
         Assert.Equal(code, json.RootElement.GetProperty("code").GetString());

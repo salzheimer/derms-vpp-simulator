@@ -1,16 +1,10 @@
-using Microsoft.EntityFrameworkCore;
 using Rva.Modules.GridTopology.Contracts;
-using Rva.Modules.GridTopology.Domain.Catalog;
-using Rva.Modules.GridTopology.Persistence;
 using Rva.SharedKernel.ReferenceCodes;
 using Rva.SharedKernel.Results;
 
 namespace Rva.Modules.GridTopology.Features.ProtocolMappings;
 
-/// <summary>
-/// What the two protocol mapping reads share: argument validation, and the tables to read, current or as of a time
-/// (through the <c>_as_of</c> functions). Plan p1-s01c generalizes the as-of reads for the topology tables.
-/// </summary>
+/// <summary>Argument validation the two protocol mapping reads share. Their tables are read through <c>AsOfReads</c>.</summary>
 internal static class ProtocolMappingReads
 {
     /// <summary>
@@ -25,14 +19,4 @@ internal static class ProtocolMappingReads
             return Error.Validation(GridTopologyErrors.ProtocolMappingQueryInvalid, "The resource category and asset type code must not be blank.");
         return null;
     }
-
-    public static IQueryable<ProtocolMapping> Mappings(GridTopologyDbContext db, DateTimeOffset? asOf) =>
-        asOf is { } at
-            ? db.ProtocolMappings.FromSql($"SELECT * FROM topology.protocol_mappings_as_of({at.ToUniversalTime()})").AsNoTracking()
-            : db.ProtocolMappings.AsNoTracking();
-
-    public static IQueryable<TechnologyType> TechnologyTypes(GridTopologyDbContext db, DateTimeOffset? asOf) =>
-        asOf is { } at
-            ? db.TechnologyTypes.FromSql($"SELECT * FROM topology.technology_types_as_of({at.ToUniversalTime()})").AsNoTracking()
-            : db.TechnologyTypes.AsNoTracking();
 }

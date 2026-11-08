@@ -2,9 +2,16 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Rva.Modules.GridTopology.Contracts;
+using Rva.Modules.GridTopology.Features.GetAsset;
+using Rva.Modules.GridTopology.Features.GetAssetsBySubstation;
+using Rva.Modules.GridTopology.Features.GetConstraintPath;
+using Rva.Modules.GridTopology.Features.GetSubstationTree;
 using Rva.Modules.GridTopology.Features.ProtocolMappings;
+using Rva.Modules.GridTopology.Features.Reads;
+using Rva.Modules.GridTopology.Features.ResolveNode;
 using Rva.Modules.GridTopology.Persistence;
 
 namespace Rva.Modules.GridTopology;
@@ -32,18 +39,29 @@ public static class GridTopologyModule
         services.AddScoped<UnitOfWork>();
         services.AddSingleton<LookupCatalog>();
 
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<AssetReader>();
         services.AddScoped<ResolveTechnologyTypeHandler>();
         services.AddScoped<GetProtocolMappingsHandler>();
+        services.AddScoped<GetAssetHandler>();
+        services.AddScoped<GetAssetsBySubstationHandler>();
+        services.AddScoped<GetConstraintPathHandler>();
+        services.AddScoped<ResolveNodeHandler>();
+        services.AddScoped<GetSubstationTreeHandler>();
         services.AddScoped<IGridTopologyQueries, GridTopologyQueries>();
 
         services.AddHealthChecks().AddCheck<ReadinessCheck>(ReadinessCheck.Name, tags: [ReadinessTag], timeout: TimeSpan.FromSeconds(5));
         return services;
     }
 
-    /// <summary>Maps the module's routes under <c>/api/topology</c>. The feature endpoints arrive with plan p1-s01c to p1-s01g.</summary>
+    /// <summary>
+    /// Maps the module's routes under <c>/api/topology</c>. External callers name assets and nodes by natural code.
+    /// </summary>
     public static IEndpointRouteBuilder MapGridTopologyEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGroup("/api/topology");
+        var group = endpoints.MapGroup("/api/topology");
+        GetAssetEndpoint.Map(group);
+        GetSubstationTreeEndpoint.Map(group);
         return endpoints;
     }
 

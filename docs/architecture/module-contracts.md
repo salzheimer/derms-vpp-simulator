@@ -65,6 +65,42 @@ A feature handler and a contract implementation may share the same internal logi
 | Shape | Request/response DTOs local to the feature | Snapshot records from `.Contracts` |
 | Lives in | The module implementation | Defined in `.Contracts`, implemented in the module |
 
+## The GridTopology contract
+
+`IGridTopologyQueries` (`Rva.Modules.GridTopology.Contracts`) as of plan step `p1-s01c`. Grid state (`GetGridState`, `p1-s01d`) and the topology snapshot (`GetTopologySnapshot`, `p1-s01g`) are added by later parts. Every method takes an optional `asOf` (null = current; a future time is a Validation error, `GridTopology.AsOfInFuture`) and a `CancellationToken`, returns `Task<Result<T>>`, and reads `rva_core` on every call, never a cache. A database failure is an exception to the caller, never a `Result`.
+
+| Method | Returns | Expected failures |
+|---|---|---|
+| `ResolveTechnologyTypeAsync(standard, resourceCategory, assetTypeCode, asOf)` | `TechnologyTypeCode` | `ProtocolMappingNotFound`, `ProtocolMappingQueryInvalid` |
+| `GetProtocolMappingsAsync(standard, asOf)` | `IReadOnlyList<ProtocolMappingSnapshot>` | `ProtocolMappingQueryInvalid` |
+| `GetAssetAsync(assetId, asOf)` | `AssetSnapshot` | `AssetNotFound` (also before the asset existed), `ConstraintPathIncomplete` |
+| `GetAssetsBySubstationAsync(substationCode, asOf, cursor, pageSize)` | `AssetPage` | `SubstationNotFound`, `PageCursorInvalid`, `PageSizeInvalid` (1 to `MaxAssetPageSize` = 1000), `ConstraintPathIncomplete` |
+| `GetConstraintPathAsync(assetId, asOf)` | `ConstraintPathSnapshot` | `AssetNotFound`, `ConstraintPathIncomplete` |
+| `ResolveNodeAsync(level, code, asOf)` | `GridNodeRef` | `NodeNotFound` (including a code that exists only at another level), `NodeQueryInvalid` |
+
+**Snapshots** (`Contracts/Snapshots/`). Ratings use the shared units and the sign convention (positive = export or discharge). Lifecycle, participation, levels, and makeup are string codes, not enums.
+
+- **`GridNodeRef`**: `GridNodeId`, `Level` (one of `GridNodeLevels`: `substation`, `feeder`, `neighborhood_transformer`, `premise`, `microgrid`), `Code`. Codes are unique within a level only.
+- **`AssetSnapshot`**: id and code; `Connection` (the node it connects to) and its substation id and code; interconnection type; `RatedPMinKw`, `RatedPMaxKw`, `RatedKva`, the per-system `ExportLimitKw`; `Site` and `Microgrid` (below); `Makeup` (`pv`, `storage`, `pv_storage`, `other`; null when no components are recorded) and `EnergyCapacityKwh` (null when no component records one); `ControlManufacturer` (null without a control profile); `LifecycleState`; `ParticipationState`; `ValidFrom` (when this version of the asset row took effect).
+- **`SiteSnapshot`**: the premise, its `CustomerSegment`, `ServiceCapacityKva` (import limit), `ExportLimitKw`, `CanIsland`. Null for an asset connected above the meter.
+- **`MicrogridSnapshot`**: the microgrid, its PCC `ImportLimitKw` and `ExportLimitKw`, `CanIsland`. Null when the asset is not a member.
+- **`ConstraintPathSnapshot`**: `Nodes`, the connection node first and the substation last, each a `ConstraintNodeSnapshot` (`Node`, `RatedCapacityKva`, `IsRated`); a premise's rating is its service capacity. Also `Site`, `Microgrid`, and two per-asset limits, both non-negative magnitudes in kW. `EffectiveExportLimitKw` is the minimum of `p_max`, the asset export limit, the site export limit, and the microgrid export limit. `EffectiveImportLimitKw` is the minimum of `|p_min|`, the site service capacity, and the microgrid import limit. Node ratings are shared by everything below the node, so dispatch allocates them; they are not folded into these limits.
+- **`AssetPage`**: `Assets` in asset id order, `AsOf`, `NextCursor` (null on the last page). The first page pins `AsOf`, to the database clock when none is given, and every later page reads that same version, so a listing taken while the topology changes is complete and has no duplicates.
+
+**Rules callers rely on:**
+
+- **Null is not zero.** A null site or microgrid limit means none is recorded at that level; 0 is a limit (non-export).
+- **An unrated feeder is never unconstrained.** It has `IsRated = false` and a null rating; treat it as unknown.
+- **A path is never missing a level.** When the stored topology cannot complete one at the requested time, the read fails with `GridTopology.ConstraintPathIncomplete`. The module logs this at Error, because it means corrupt data and is never the caller's fault, and an endpoint answers 500.
+- **Never cache a constraint path.** A premise reparenting changes it (GT-09).
+
+**Endpoints** (under `/api/topology`, for external callers, by natural code). `asOf` is an ISO 8601 time with a UTC offset, for example `2026-11-07T08:00:00Z`; a time without one is a 400 (`GridTopology.AsOfInvalid`).
+
+| Route | Returns |
+|---|---|
+| `GET /assets/{code}?asOf=` | The asset, as `AssetSnapshot` fields in plain JSON numbers and strings |
+| `GET /substations/{code}/tree?asOf=` | The substation's feeders, transformers, premises, microgrids, and assets, nested by the normal configuration, with GeoJSON locations (WGS 84). A subtree larger than `GridTopology:MaxSubstationTreeSize` nodes and assets (default 20,000) is a 400 (`GridTopology.TreeTooLarge`). |
+
 ## Contracts vs. the shared kernel
 
 - **`Rva.SharedKernel`** holds the vocabulary everyone shares: `AssetId`, `Kilowatts`, `Result`. No module owns it, and a type is added only when a second module needs it.

@@ -23,4 +23,38 @@ public static class GridTopologyErrors
 
     /// <summary>Validation: a protocol mapping query needs a standard and non-blank resource category and asset type code.</summary>
     public const string ProtocolMappingQueryInvalid = "GridTopology.ProtocolMappingQueryInvalid";
+
+    /// <summary>NotFound: no asset has this id or code, or it did not exist yet at the requested time.</summary>
+    public const string AssetNotFound = "GridTopology.AssetNotFound";
+
+    /// <summary>NotFound: no substation has this code, or it did not exist yet at the requested time.</summary>
+    public const string SubstationNotFound = "GridTopology.SubstationNotFound";
+
+    /// <summary>NotFound: no node at this level has this code, or it did not exist yet at the requested time.</summary>
+    public const string NodeNotFound = "GridTopology.NodeNotFound";
+
+    /// <summary>Validation: the level is not one of <see cref="GridNodeLevels"/>, or the code is blank.</summary>
+    public const string NodeQueryInvalid = "GridTopology.NodeQueryInvalid";
+
+    /// <summary>Validation: the requested <c>asOf</c> time is later than now; the topology's future is unknown.</summary>
+    public const string AsOfInFuture = "GridTopology.AsOfInFuture";
+
+    /// <summary>Validation: <c>asOf</c> is not an ISO 8601 date and time with a UTC offset (ex. <c>2026-11-07T08:00:00Z</c>).</summary>
+    public const string AsOfInvalid = "GridTopology.AsOfInvalid";
+
+    /// <summary>Validation: the page cursor is malformed, or belongs to another listing.</summary>
+    public const string PageCursorInvalid = "GridTopology.PageCursorInvalid";
+
+    /// <summary>Validation: the page size is outside the allowed range.</summary>
+    public const string PageSizeInvalid = "GridTopology.PageSizeInvalid";
+
+    /// <summary>Validation: the substation tree has more nodes and assets than one response may hold.</summary>
+    public const string TreeTooLarge = "GridTopology.TreeTooLarge";
+
+    /// <summary>
+    /// Rule, but never the caller's fault: the stored topology has no complete path from an asset to its substation at
+    /// the requested time (a parent row is missing from the main or history table). Safety-relevant reads fail with
+    /// this rather than return a path missing a level (U5). It is logged at Error, and an endpoint answers 500.
+    /// </summary>
+    public const string ConstraintPathIncomplete = "GridTopology.ConstraintPathIncomplete";
 }

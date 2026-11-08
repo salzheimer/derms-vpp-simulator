@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Rva.Modules.GridTopology.Contracts;
 using Rva.Modules.GridTopology.Http;
 using Rva.SharedKernel.Results;
 
@@ -19,5 +20,14 @@ public class ResultHttpMappingTests
         Assert.Equal(status, problem.StatusCode);
         Assert.Equal("Something is wrong.", problem.ProblemDetails.Detail);
         Assert.Equal("GridTopology.Test", problem.ProblemDetails.Extensions["code"]);
+    }
+
+    [Fact]
+    public void An_incomplete_constraint_path_is_the_servers_fault_so_500_with_its_code()
+    {
+        var problem = Error.Rule(GridTopologyErrors.ConstraintPathIncomplete, "Asset X has no complete constraint path.").ToProblem();
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, problem.StatusCode);
+        Assert.Equal(GridTopologyErrors.ConstraintPathIncomplete, problem.ProblemDetails.Extensions["code"]);
     }
 }

@@ -75,6 +75,9 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
             .WithBindMount(Path.Combine(postgresDir, "core"), "/docker-entrypoint-initdb.d", AccessMode.ReadOnly)
             .WithBindMount(testsDir, "/tests", AccessMode.ReadOnly)
             .WithBindMount(Path.Combine(postgresDir, "seed"), SeedDirectory, AccessMode.ReadOnly)
+            // Every test has its own database, so its own connection pool; tests release theirs when they end
+            // (TestDatabase.ReleaseConnections), and this leaves headroom for those running in parallel.
+            .WithCommand("-c", "max_connections=300")
             .Build();
         await container.StartAsync();
         await WaitForInitAsync();
