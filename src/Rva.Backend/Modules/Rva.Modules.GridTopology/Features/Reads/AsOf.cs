@@ -40,12 +40,23 @@ internal static partial class AsOf
         if (string.IsNullOrEmpty(value))
             return Result.Success<DateTimeOffset?>(null);
 
-        if (!Iso8601WithOffset().IsMatch(value)
-            || !DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+        if (!TryParseInstant(value, out var parsed))
             return Error.Validation(GridTopologyErrors.AsOfInvalid,
                 "asOf must be an ISO 8601 date and time with a UTC offset, ex. 2026-11-07T08:00:00Z or 2026-11-07T00:00:00-08:00.");
 
         return Result.Success<DateTimeOffset?>(parsed);
+    }
+
+    /// <summary>
+    /// Parses an ISO 8601 date and time with a UTC offset (<c>Z</c> or <c>±hh:mm</c>), the form every time the module
+    /// accepts from a caller takes. A time without an offset is rejected rather than guessed.
+    /// </summary>
+    public static bool TryParseInstant(string? value, out DateTimeOffset instant)
+    {
+        instant = default;
+        return value is not null
+            && Iso8601WithOffset().IsMatch(value)
+            && DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out instant);
     }
 
     public static string Format(DateTimeOffset at) => at.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);

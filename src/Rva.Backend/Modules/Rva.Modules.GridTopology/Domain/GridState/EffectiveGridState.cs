@@ -1,3 +1,4 @@
+using Rva.Modules.GridTopology.Contracts;
 using Rva.Modules.GridTopology.Contracts.Snapshots;
 
 namespace Rva.Modules.GridTopology.Domain.GridState;
@@ -22,6 +23,47 @@ internal sealed record EffectiveGridState(string State, GridNodeRef? CauseNode, 
     /// </summary>
     /// <param name="path">The asset's path nodes, any order; levels the asset sits above are absent.</param>
     /// <param name="assetState">The asset's own latest event state; null = no event.</param>
-    public static EffectiveGridState Derive(IReadOnlyCollection<PathNodeState> path, string? assetState) =>
-        throw new NotImplementedException();
+    /// <remarks>
+    /// Rules, as in the reference: a node with no event, or whose latest event is <c>connected_energized</c>, changes
+    /// nothing; <c>connected_deenergized</c> or <c>disconnected</c> de-energizes everything below it; <c>islanded</c>
+    /// re-energizes what is below it from local sources. So a restoration below a dead node does not re-energize, and a
+    /// dead node below an island de-energizes. The asset's own <c>disconnected</c> overrides the path; its own
+    /// <c>connected_energized</c> (a reconnect) cannot re-energize a dead path. The cause is the last node on the walk
+    /// that set the state, the one nearest the asset, or the asset itself.
+    /// </remarks>
+    public static EffectiveGridState Derive(IReadOnlyCollection<PathNodeState> path, string? assetState)
+    {
+        var state = GridStates.ConnectedEnergized;
+        GridNodeRef? cause = null;
+
+        foreach (var node in path.OrderBy(n => WalkRank(n.Node.Level)))
+        {
+            switch (node.State)
+            {
+                case GridStates.Islanded:
+                    state = GridStates.Islanded;
+                    cause = node.Node;
+                    break;
+                case GridStates.ConnectedDeenergized or GridStates.Disconnected:
+                    state = GridStates.ConnectedDeenergized;
+                    cause = node.Node;
+                    break;
+            }
+        }
+
+        return assetState == GridStates.Disconnected
+            ? new EffectiveGridState(GridStates.Disconnected, null, CausedByAsset: true)
+            : new EffectiveGridState(state, cause, CausedByAsset: false);
+    }
+
+    /// <summary>Where a level sits on the walk from the substation down.</summary>
+    private static int WalkRank(string level) => level switch
+    {
+        GridNodeLevels.Substation => 0,
+        GridNodeLevels.Feeder => 1,
+        GridNodeLevels.Microgrid => 2,
+        GridNodeLevels.NeighborhoodTransformer => 3,
+        GridNodeLevels.Premise => 4,
+        _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Not a grid node level."),
+    };
 }

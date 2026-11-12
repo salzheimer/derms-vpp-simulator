@@ -72,4 +72,10 @@ public static class GridTopologyErrors
 
     /// <summary>Rule: an asset's own event may only be <c>disconnected</c> or <c>connected_energized</c> (D10).</summary>
     public const string AssetGridStateNotAllowed = "GridTopology.AssetGridStateNotAllowed";
+
+    /// <summary>
+    /// Validation: a grid state event's <c>occurredAt</c> is missing, or is not an ISO 8601 date and time with a UTC
+    /// offset (ex. <c>2026-11-07T08:00:00Z</c>).
+    /// </summary>
+    public const string OccurredAtInvalid = "GridTopology.OccurredAtInvalid";
 }
