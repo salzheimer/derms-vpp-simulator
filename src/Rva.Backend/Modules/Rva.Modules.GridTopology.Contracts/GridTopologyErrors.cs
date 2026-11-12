@@ -57,4 +57,19 @@ public static class GridTopologyErrors
     /// this rather than return a path missing a level (U5). It is logged at Error, and an endpoint answers 500.
     /// </summary>
     public const string ConstraintPathIncomplete = "GridTopology.ConstraintPathIncomplete";
+
+    /// <summary>Validation: a grid state event names both a node and an asset as its target, or neither.</summary>
+    public const string GridStateTargetInvalid = "GridTopology.GridStateTargetInvalid";
+
+    /// <summary>Rule: no node at the given level has the given code, or no asset has the given code.</summary>
+    public const string GridStateTargetNotFound = "GridTopology.GridStateTargetNotFound";
+
+    /// <summary>Validation: the grid state code is not one of <see cref="GridStates"/>.</summary>
+    public const string GridStateUnknown = "GridTopology.GridStateUnknown";
+
+    /// <summary>Rule: <c>islanded</c> on a node that cannot island (a transformer, a feeder, a premise without <c>can_island</c>).</summary>
+    public const string NodeCannotIsland = "GridTopology.NodeCannotIsland";
+
+    /// <summary>Rule: an asset's own event may only be <c>disconnected</c> or <c>connected_energized</c> (D10).</summary>
+    public const string AssetGridStateNotAllowed = "GridTopology.AssetGridStateNotAllowed";
 }

@@ -8,9 +8,11 @@ using Rva.Modules.GridTopology.Contracts;
 using Rva.Modules.GridTopology.Features.GetAsset;
 using Rva.Modules.GridTopology.Features.GetAssetsBySubstation;
 using Rva.Modules.GridTopology.Features.GetConstraintPath;
+using Rva.Modules.GridTopology.Features.GetGridState;
 using Rva.Modules.GridTopology.Features.GetSubstationTree;
 using Rva.Modules.GridTopology.Features.ProtocolMappings;
 using Rva.Modules.GridTopology.Features.Reads;
+using Rva.Modules.GridTopology.Features.RecordGridStateEvent;
 using Rva.Modules.GridTopology.Features.ResolveNode;
 using Rva.Modules.GridTopology.Persistence;
 
@@ -48,6 +50,8 @@ public static class GridTopologyModule
         services.AddScoped<GetConstraintPathHandler>();
         services.AddScoped<ResolveNodeHandler>();
         services.AddScoped<GetSubstationTreeHandler>();
+        services.AddScoped<GetGridStateHandler>();
+        services.AddScoped<RecordGridStateEventHandler>();
         services.AddScoped<IGridTopologyQueries, GridTopologyQueries>();
 
         services.AddHealthChecks().AddCheck<ReadinessCheck>(ReadinessCheck.Name, tags: [ReadinessTag], timeout: TimeSpan.FromSeconds(5));
@@ -62,6 +66,7 @@ public static class GridTopologyModule
         var group = endpoints.MapGroup("/api/topology");
         GetAssetEndpoint.Map(group);
         GetSubstationTreeEndpoint.Map(group);
+        RecordGridStateEventEndpoint.Map(group);
         return endpoints;
     }
 

@@ -22,6 +22,7 @@ internal sealed class TestEndpoints : IStartupFilter
     public const string Lookup = "/_test/lookup-wind";
     public const string UpdateAsset = "/_test/update-asset";
     public const string BreakAssetRating = "/_test/break-asset-rating";
+    public const string TamperGridStateEvent = "/_test/tamper-grid-state-event";
 
     /// <summary>Text in the exception <see cref="Throw"/> raises; must never reach a response.</summary>
     public const string SecretDetail = "SECRET-DETAIL-7f3a";
@@ -52,6 +53,24 @@ internal sealed class TestEndpoints : IStartupFilter
         // FI-5: a write the domain would never allow (rated kVA below the asset's power), so only the database rejects it.
         app.Map(BreakAssetRating, branch => branch.Run(context => ChangeFixtureAssetAsync(context, "test: kVA below power",
             (db, asset) => db.Entry(asset).Property(a => a.RatedKva).CurrentValue = new KilovoltAmperes(1))));
+
+        // FI-5 on the append-only grid state events (D-20): edit the earliest event's reason through the unit of work,
+        // a change the module offers no path for, so only the database's append-only trigger rejects it.
+        app.Map(TamperGridStateEvent, branch => branch.Run(async context =>
+        {
+            var db = context.RequestServices.GetRequiredService<GridTopologyDbContext>();
+            var result = await context.RequestServices.GetRequiredService<UnitOfWork>().ExecuteAsync("test: tamper grid state event", async cancellationToken =>
+            {
+                var gridStateEvent = await db.GridStateEvents.OrderBy(e => e.Id).FirstAsync(cancellationToken);
+                db.Entry(gridStateEvent).Property(e => e.Reason).CurrentValue = "tampered";
+                return Result.Success();
+            }, context.RequestAborted);
+
+            if (result.IsFailure)
+                await result.Error.ToProblem().ExecuteAsync(context);
+            else
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+        }));
     };
 
     private static async Task ChangeFixtureAssetAsync(HttpContext context, string reason,
