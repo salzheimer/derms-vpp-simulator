@@ -24,7 +24,8 @@ Full detail: `.ai/rules/csharp-monolith.md` and `.ai/rules/python-sidecar.md`.
 
 ## Where to look next
 
-- `.ai/rules/agent-workflow.md` — human checkpoints, plan-step scope, branch/PR workflow for agents.
+- `.ai/rules/agent-workflow.md` — human checkpoints, plan-step scope, branch/PR workflow for agents, test-first steps.
+- `.agents/agents/` — canonical subagent definitions (`test-author.md`, `implementer.md`); `.claude/agents/` and `.codex/agents/` hold thin wrappers that point at them.
 - `.ai/rules/csharp-monolith.md` — C# module layout, conventions, sovereignty principle.
 - `.ai/rules/sql-ddl.md` — SQL DDL standard: required table/column comments and their checked format, naming, types; read before writing or changing any SQL.
 - `.ai/rules/python-sidecar.md` — sidecar conventions, the Consultant constraint.

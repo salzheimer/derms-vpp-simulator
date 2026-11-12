@@ -13,4 +13,5 @@ Read @.ai/rules/agent-workflow.md and follow it before implementing, creating a 
 - "Evaluate", "assess", "check alignment", and "review" mean analysis only. Report findings, then wait.
 - After opening the pull request, stop. Do not merge, start the next step, or add unrelated changes.
 - Record canonical status only in the plan that owns that work item, in the pull request that changes it.
+- In a test-first step, the implementer never changes the tests or stub signatures from the reviewed `<plan-step-id>: tests first` commit; if one looks wrong, stop and report it.
 - Run the relevant checks in @.ai/scripts/verify.md. Never use `--no-verify`.

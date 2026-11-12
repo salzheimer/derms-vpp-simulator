@@ -15,6 +15,14 @@
 - [ ] Criterion: <!-- criterion -->
   - Evidence: <!-- tests, behavior, or other verification -->
 
+## Test-first
+
+<!-- For a test-first step (.ai/rules/agent-workflow.md, "Test-first steps"). Otherwise write N/A. -->
+
+- **Tests-first commit:** <!-- SHA of the `<plan-step-id>: tests first` commit -->
+- **Stub list:** <!-- each type and signature the test author added, with its file -->
+- **Self-check:** <!-- reviewed tests unchanged since that commit; stub signatures unchanged; no NotImplementedException / NotImplementedError left -->
+
 ## Validation
 
 <!-- List the verification commands/checks run and summarize results. Explain any skipped, failed, or unavailable checks. -->
