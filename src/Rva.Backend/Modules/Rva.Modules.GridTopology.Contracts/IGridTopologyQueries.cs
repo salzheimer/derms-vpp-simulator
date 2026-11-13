@@ -75,6 +75,14 @@ public interface IGridTopologyQueries
     /// <param name="asOf">Resolve the node as it was at this time; null = current.</param>
     Task<Result<GridNodeRef>> ResolveNodeAsync(string level, string code, DateTimeOffset? asOf, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// One asset's effective grid state (<see cref="GridStateSnapshot"/>), current or as of a time, from the grid state
+    /// events known then (occurred and recorded by then). NotFound (<see cref="GridTopologyErrors.AssetNotFound"/>) for
+    /// an unknown asset. A database failure is an exception, never a result, and never "energized" (U5).
+    /// </summary>
+    /// <param name="asOf">Read the state as it was known at this time; null = current.</param>
+    Task<Result<GridStateSnapshot>> GetGridStateAsync(AssetId assetId, DateTimeOffset? asOf, CancellationToken cancellationToken);
+
     /// <summary>The largest page <see cref="GetAssetsBySubstationAsync"/> returns.</summary>
     const int MaxAssetPageSize = 1000;
 }

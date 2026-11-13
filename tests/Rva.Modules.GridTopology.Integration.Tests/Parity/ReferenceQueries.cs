@@ -61,4 +61,37 @@ internal static class ReferenceQueries
         await transaction.RollbackAsync(cancellationToken);
         return rows;
     }
+
+    /// <summary>
+    /// <c>pg_temp.asset_grid_states(at)</c> joined with <c>pg_temp.dispatch_eligible(at)</c>: each asset's effective
+    /// grid state and whether it is eligible, by asset code (GT-18).
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<string, (string GridState, bool Eligible)>> AssetGridStatesAsync(
+        TestDatabase database, DateTimeOffset at, CancellationToken cancellationToken)
+    {
+        var helpers = await File.ReadAllTextAsync(
+            Path.Combine(RepositoryPaths.Root, "infrastructure", "postgres", "tests", "fixtures", "_helpers.sql"), cancellationToken);
+
+        await using var connection = new NpgsqlConnection(database.ConnectionString + ";Pooling=false");
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await using (var setup = new NpgsqlCommand(helpers, connection, transaction))
+            await setup.ExecuteNonQueryAsync(cancellationToken);
+
+        await using var query = new NpgsqlCommand("""
+            SELECT g.asset_code, g.grid_state, EXISTS (SELECT 1 FROM pg_temp.dispatch_eligible($1) e WHERE e = g.asset_code)
+            FROM pg_temp.asset_grid_states($1) g
+            ORDER BY g.asset_code
+            """, connection, transaction) { Parameters = { new() { Value = at.ToUniversalTime() } } };
+
+        var rows = new Dictionary<string, (string, bool)>(StringComparer.Ordinal);
+        await using (var reader = await query.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+                rows.Add(reader.GetString(0), (reader.GetString(1), reader.GetBoolean(2)));
+        }
+
+        await transaction.RollbackAsync(cancellationToken);
+        return rows;
+    }
 }

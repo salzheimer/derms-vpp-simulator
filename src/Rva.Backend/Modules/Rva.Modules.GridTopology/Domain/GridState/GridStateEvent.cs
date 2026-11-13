@@ -11,6 +11,24 @@ internal sealed class GridStateEvent
 {
     private GridStateEvent() { }
 
+    private GridStateEvent(GridNodeId? gridNodeId, AssetId? assetId, int gridStateId, DateTimeOffset occurredAt, string reason)
+    {
+        GridNodeId = gridNodeId;
+        AssetId = assetId;
+        GridStateId = gridStateId;
+        // timestamptz takes UTC only; the instant is unchanged.
+        OccurredAt = occurredAt.ToUniversalTime();
+        Reason = reason;
+    }
+
+    /// <summary>A new event on a grid node.</summary>
+    public static GridStateEvent OnNode(GridNodeId gridNodeId, int gridStateId, DateTimeOffset occurredAt, string reason) =>
+        new(gridNodeId, null, gridStateId, occurredAt, reason);
+
+    /// <summary>A new event on an asset itself.</summary>
+    public static GridStateEvent OnAsset(AssetId assetId, int gridStateId, DateTimeOffset occurredAt, string reason) =>
+        new(null, assetId, gridStateId, occurredAt, reason);
+
     public long Id { get; private set; }
     public GridNodeId? GridNodeId { get; private set; }
     public AssetId? AssetId { get; private set; }

@@ -3,6 +3,7 @@ using Rva.Modules.GridTopology.Contracts.Snapshots;
 using Rva.Modules.GridTopology.Features.GetAsset;
 using Rva.Modules.GridTopology.Features.GetAssetsBySubstation;
 using Rva.Modules.GridTopology.Features.GetConstraintPath;
+using Rva.Modules.GridTopology.Features.GetGridState;
 using Rva.Modules.GridTopology.Features.ProtocolMappings;
 using Rva.Modules.GridTopology.Features.ResolveNode;
 using Rva.SharedKernel.Identifiers;
@@ -18,7 +19,8 @@ internal sealed class GridTopologyQueries(
     GetAssetHandler getAsset,
     GetAssetsBySubstationHandler getAssetsBySubstation,
     GetConstraintPathHandler getConstraintPath,
-    ResolveNodeHandler resolveNode) : IGridTopologyQueries
+    ResolveNodeHandler resolveNode,
+    GetGridStateHandler getGridState) : IGridTopologyQueries
 {
     public Task<Result<TechnologyTypeCode>> ResolveTechnologyTypeAsync(
         ProtocolStandard standard, string resourceCategory, string assetTypeCode, DateTimeOffset? asOf,
@@ -41,4 +43,7 @@ internal sealed class GridTopologyQueries(
 
     public Task<Result<GridNodeRef>> ResolveNodeAsync(string level, string code, DateTimeOffset? asOf, CancellationToken cancellationToken) =>
         resolveNode.HandleAsync(level, code, asOf, cancellationToken);
+
+    public Task<Result<GridStateSnapshot>> GetGridStateAsync(AssetId assetId, DateTimeOffset? asOf, CancellationToken cancellationToken) =>
+        getGridState.HandleAsync(assetId, asOf, cancellationToken);
 }
