@@ -3,11 +3,4 @@ description: Audit, Zero Trust, RBAC, and substation-level dispatch limits
 alwaysApply: true
 ---
 
-# Security
-
-Read @.ai/rules/security.md before changing audit, access control, or dispatch. That file is the canonical security standard.
-
-- Record grid-impacting commands through the synchronous `AuditTo` pipeline and the Audit module's `IAuditProvider`. Audit records are append-only.
-- Zero Trust: cryptographic identity for every device and service. Service-to-service auth uses JWT.
-- Keep `Operator` (control) and `Auditor` (monitoring) separate. An Auditor path must not trigger a grid-impacting action.
-- Dispatch respects substation-level balance, not only fleet-wide totals. See @.ai/rules/domain-glossary.md.
+Follow @.ai/rules/security.md, the canonical standard. This file only tells Cursor when to load it.

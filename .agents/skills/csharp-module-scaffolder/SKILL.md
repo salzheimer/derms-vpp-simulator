@@ -34,4 +34,4 @@ When adding a new module (bounded context) under `src/Rva.Backend/Modules/`, e.g
 
 ## Verification
 
-Run `dotnet build VppAggregator.slnx` and `dotnet test --solution VppAggregator.slnx` (see `.ai/scripts/verify.md`). The architecture tests must pass with the new module included.
+Run `dotnet build VppAggregator.slnx` and `dotnet test --solution VppAggregator.slnx` (see `.agents/skills/verify/SKILL.md`). The architecture tests must pass with the new module included.

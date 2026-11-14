@@ -1,6 +1,6 @@
 # SQL DDL Standard
 
-Rules for writing or changing PostgreSQL DDL in this repo (`infrastructure/postgres/**`, and later migrations), by humans or agents. The DDL is the source of truth for the data model; these rules keep it self-describing and consistent. Rules marked **[lint]** are checked by `infrastructure/postgres/tests/ddl_lint.sql` (see `.ai/scripts/verify.md`); the rest are checked in review.
+Rules for writing or changing PostgreSQL DDL in this repo (`infrastructure/postgres/**`, and later migrations), by humans or agents. The DDL is the source of truth for the data model; these rules keep it self-describing and consistent. Rules marked **[lint]** are checked by `infrastructure/postgres/tests/ddl_lint.sql` (see `.agents/skills/verify/SKILL.md`); the rest are checked in review.
 
 ## 1. Comments
 
@@ -79,7 +79,7 @@ Follow `.ai/rules/csharp-monolith.md` section 9: edited state is system-versione
 
 ## 7. Tests
 
-Behavior the database owns (constraints, triggers, versioning, `_as_of` reads, append-only rules) is tested with pgTAP in `infrastructure/postgres/tests/pgtap/`, run by `run_tests.sh` (`.ai/scripts/verify.md`). Write the test first and watch it fail, then change the DDL.
+Behavior the database owns (constraints, triggers, versioning, `_as_of` reads, append-only rules) is tested with pgTAP in `infrastructure/postgres/tests/pgtap/`, run by `run_tests.sh` (`.agents/skills/verify/SKILL.md`). Write the test first and watch it fail, then change the DDL.
 
 * One file per validation scenario in `docs/architecture/model-validation-scenarios.md`, named after its ID (`gt05_local_overload.sql`); every assertion description starts with the ID (`'GT-05: ...'`) so failures map back to the scenario.
 * Build data from the shared fixtures in `tests/fixtures/` (A–D, synthetic codes `FXA-`…`FXD-`), never from the development seed. Each file runs in one transaction and ends with `ROLLBACK`.
@@ -91,5 +91,5 @@ Behavior the database owns (constraints, triggers, versioning, `_as_of` reads, a
 ## 8. Before you open a pull request
 
 1. Every new table and column has a comment in the format above (and history comments regenerated via `enable_versioning`).
-2. Run `infrastructure/postgres/tests/run_tests.sh` (`.ai/scripts/verify.md`): it recreates both databases from their init scripts, runs the lint, and runs the pgTAP suite. The init itself fails if any table or column in `topology` or `simulation` has no comment. A schema change ships with the pgTAP tests that cover it (section 7).
+2. Run `infrastructure/postgres/tests/run_tests.sh` (`.agents/skills/verify/SKILL.md`): it recreates both databases from their init scripts, runs the lint, and runs the pgTAP suite. The init itself fails if any table or column in `topology` or `simulation` has no comment. A schema change ships with the pgTAP tests that cover it (section 7).
 3. A lint failure is a schema or comment defect to fix. Do not weaken the lint to make a change pass; if a rule is wrong, change this document and the lint together in their own pull request.

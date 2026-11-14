@@ -19,7 +19,7 @@ Use synthetic values for model validation. Utility feeder maps and operational r
 
 ## Executable tests
 
-Each scenario has a pgTAP file in `infrastructure/postgres/tests/pgtap/` named after its ID, and every assertion is prefixed with that ID. Fixtures A–D are in `infrastructure/postgres/tests/fixtures/`. Run everything with `infrastructure/postgres/tests/run_tests.sh` (`.ai/scripts/verify.md`); the conventions are in `.ai/rules/sql-ddl.md` section 7.
+Each scenario has a pgTAP file in `infrastructure/postgres/tests/pgtap/` named after its ID, and every assertion is prefixed with that ID. Fixtures A–D are in `infrastructure/postgres/tests/fixtures/`. Run everything with `infrastructure/postgres/tests/run_tests.sh` (`.agents/skills/verify/SKILL.md`); the conventions are in `.ai/rules/sql-ddl.md` section 7.
 
 Each expectation is tested where its owner enforces it:
 

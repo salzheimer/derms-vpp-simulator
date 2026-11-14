@@ -5,16 +5,18 @@ Where everything lives. The backend is a modular monolith built from separate `.
 ```text
 vpp-aggregator/
 ├── AGENTS.md                        canonical AI-agent instructions (a map that links to .ai/)
-├── CLAUDE.md, .cursorrules          thin pointers to AGENTS.md for specific tools
+├── CLAUDE.md                        thin pointer to AGENTS.md for Claude Code
 ├── README.md                        human-facing overview
 ├── VppAggregator.slnx               .NET solution
 ├── .ai/
-│   ├── rules/                       csharp-monolith, domain-glossary, security, python-sidecar, agent-workflow
-│   ├── plans/                       MASTER_PLAN, PHASE_1_PLAN
-│   └── scripts/verify.md            build, test, and lint commands
-├── .agents/skills/                  canonical agent skills (e.g. csharp-module-scaffolder)
-├── .claude/skills/                  stubs that point to .agents/skills
-├── .github/copilot-instructions.md  pointer to AGENTS.md
+│   ├── rules/                       agent-workflow, csharp-monolith, sql-ddl, testing, python-sidecar, security, domain-glossary
+│   └── plans/                       MASTER_PLAN, PHASE_1_PLAN, step plans, AI_HARNESS_PLAN
+├── .agents/
+│   ├── agents/                      canonical agent definitions (test-author, implementer)
+│   └── skills/                      canonical agent skills (verify: build, test, and lint commands; csharp-module-scaffolder)
+├── .claude/, .codex/                thin wrappers that point to .agents/
+├── .cursor/rules/                   thin wrappers that point to .ai/rules/
+├── .github/copilot-instructions.md  pointer to AGENTS.md and .ai/rules/
 ├── .githooks/                       pre-commit / pre-push: block direct changes to main
 ├── docs/architecture/               these diagrams
 │

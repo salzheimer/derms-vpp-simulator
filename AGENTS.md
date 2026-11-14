@@ -32,7 +32,7 @@ Full detail: `.ai/rules/csharp-monolith.md` and `.ai/rules/python-sidecar.md`.
 - `.ai/rules/testing.md` — test frameworks (xUnit v3 on Microsoft.Testing.Platform, pgTAP, pytest), approved test packages, where test projects live; read before adding or changing any test project.
 - `.ai/rules/domain-glossary.md` — domain terms (DER, `Asset`, `GridNode` hierarchy, `TechnologyType`, etc.).
 - `.ai/rules/security.md` — audit, RBAC, NERC CIP, Zero Trust, geospatial dispatch rule.
-- `.ai/scripts/verify.md` — build/test/lint commands.
+- `.agents/skills/verify/SKILL.md` — build/test/lint commands.
 - `.ai/plans/MASTER_PLAN.md` — roadmap and phases.
 
 ## Ground rules

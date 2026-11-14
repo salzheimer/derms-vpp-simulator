@@ -10,7 +10,7 @@ This file exists only so Claude Code discovers the agent under `.claude/agents/`
 
 ## Claude Code sandbox
 
-The sandbox blocks the Unix sockets that `dotnet` and Docker use, so the commands in `.ai/scripts/verify.md` can hang or fail here:
+The sandbox blocks the Unix sockets that `dotnet` and Docker use, so the commands in `.agents/skills/verify/SKILL.md` can hang or fail here:
 
 * Build with `dotnet build VppAggregator.slnx -m:1 -nodeReuse:false -p:UseSharedCompilation=false`.
 * Run unit and architecture tests through the built test executable, for example `tests/Rva.Modules.GridTopology.Tests/bin/Debug/net10.0/Rva.Modules.GridTopology.Tests`, with `-class <FullName>` or `-method <FullName>` to filter. The executable does not accept MTP's `--filter-class`.

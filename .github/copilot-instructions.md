@@ -1,1 +1,1 @@
-For project context, architecture, and coding conventions, read `AGENTS.md` at the repo root and the topic files under `.ai/rules/` (C# monolith, Python sidecar, testing, domain glossary, security). This file intentionally stays thin — canonical guidance lives there so it isn't duplicated per tool.
+Read `AGENTS.md` at the repo root first, then the rules in `.ai/rules/` that apply to the files you are changing. This file only points there; the canonical guidance is not duplicated per tool.

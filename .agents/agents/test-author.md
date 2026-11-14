@@ -57,7 +57,7 @@ The user or parent agent names the approved plan step and its acceptance criteri
 
 ## Run the new tests (the red check)
 
-Run the tests you wrote, using the commands in `.ai/scripts/verify.md`, and classify each result:
+Run the tests you wrote, using the commands in `.agents/skills/verify/SKILL.md`, and classify each result:
 
 | Result | Meaning | What to do |
 |---|---|---|

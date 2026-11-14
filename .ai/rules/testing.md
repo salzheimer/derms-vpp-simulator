@@ -5,7 +5,7 @@ Which test framework each part of the repo uses, and where tests live. This appl
 ## 1. .NET (`src/Rva.Backend`, `src/Rva.Simulator`)
 
 * **Framework:** xUnit v3 (`xunit.v3`) on **Microsoft.Testing.Platform** (MTP). The VSTest stack is not used: no `xunit` (v2), `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`, or `coverlet.collector`. No NUnit, MSTest, or TUnit.
-* **Opt-in:** the root `global.json` sets `"test": { "runner": "Microsoft.Testing.Platform" }`, which switches `dotnet test` to MTP for the whole repo. Commands are in `.ai/scripts/verify.md`.
+* **Opt-in:** the root `global.json` sets `"test": { "runner": "Microsoft.Testing.Platform" }`, which switches `dotnet test` to MTP for the whole repo. Commands are in `.agents/skills/verify/SKILL.md`.
 * **Test projects:**
   * live under `tests/`, named `Rva.<Thing>.Tests` (the existing `tests/Rva.ArchitectureTests` keeps its name);
   * set `<OutputType>Exe</OutputType>`; MTP test projects are executables;
@@ -40,7 +40,7 @@ Decided 2026-10-30 (`.ai/plans/P1_S01_GRID_TOPOLOGY_PLAN.md`, D1–D4). Changing
 * **Project layout (D3):** two test projects per module:
   * `tests/Rva.Modules.<Area>.Tests`: unit tests (domain rules, derivations, `Result` mapping). No Docker, no database.
   * `tests/Rva.Modules.<Area>.Integration.Tests`: tests against a real PostgreSQL, at handler or contract level and at endpoint level (the host in memory through `WebApplicationFactory<Program>`).
-* **Database integration tests (D1):** `Testcontainers.PostgreSql`, running the test image built from `infrastructure/postgres/tests/Dockerfile` (PostGIS, pgTAP, psql). `infrastructure/postgres/core` is bind-mounted over the whole init directory, as in compose. Fixtures come from `infrastructure/postgres/tests/fixtures/`, loaded with psql inside the container, so the pgTAP and .NET suites share one source of fixtures. The tests need Docker (`.ai/scripts/verify.md`). The compose stack is never used by tests.
+* **Database integration tests (D1):** `Testcontainers.PostgreSql`, running the test image built from `infrastructure/postgres/tests/Dockerfile` (PostGIS, pgTAP, psql). `infrastructure/postgres/core` is bind-mounted over the whole init directory, as in compose. Fixtures come from `infrastructure/postgres/tests/fixtures/`, loaded with psql inside the container, so the pgTAP and .NET suites share one source of fixtures. The tests need Docker (`.agents/skills/verify/SKILL.md`). The compose stack is never used by tests.
 * **Test doubles (D2):** hand-written fakes, for example a fake `IGridTopologyQueries`, `IIntegrationEventPublisher`, or `TimeProvider`. No mocking library.
 * **Assertions (D4):** xUnit's `Assert` only. No assertion library.
 * **Other packages:** a test project still declares only the approved packages above. Packages it needs at runtime (EF Core, Npgsql, Serilog, the base Testcontainers package) come transitively from the projects it references.
@@ -62,5 +62,5 @@ The rules:
 These checks run in two places. The local hook gives early feedback, but anyone can skip it. Enforcement happens on the server:
 
 * **on every pull request and every push to `main`**, in the `test-guardrail` GitHub Actions workflow (`.github/workflows/test-guardrail.yml`). This run can't be skipped locally. It is meant to become a required check on `main`, but that has to wait: the repository is private on GitHub Free, which does not enforce rulesets (`.ai/rules/agent-workflow.md`). Until then, a failing run is visible on the pull request but does not block the merge. Do not merge a pull request with a failing `test-guardrail` run;
-* **before every commit** that touches a `.csproj`, `.props`, or `.targets` file, `global.json`, or `tests/Rva.ArchitectureTests`. The shared `pre-commit` hook in `.githooks/` runs `TestFrameworkTests` and blocks the commit if it fails. It also refuses to run while any of those files has unstaged or untracked changes, because the tests read the working tree, not the staged content. The hooks are enabled once per clone (`.ai/scripts/verify.md`), and must never be skipped with `--no-verify`;
+* **before every commit** that touches a `.csproj`, `.props`, or `.targets` file, `global.json`, or `tests/Rva.ArchitectureTests`. The shared `pre-commit` hook in `.githooks/` runs `TestFrameworkTests` and blocks the commit if it fails. It also refuses to run while any of those files has unstaged or untracked changes, because the tests read the working tree, not the staged content. The hooks are enabled once per clone (`.agents/skills/verify/SKILL.md`), and must never be skipped with `--no-verify`;
 * whenever `dotnet test` runs, as part of the architecture test suite.
