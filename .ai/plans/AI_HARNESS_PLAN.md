@@ -1,6 +1,6 @@
 # Plan ai: Harden the AI harness
 
-**Status:** proposed, awaiting human approval; part statuses are tracked in the Parts table below · **Depends on:** nothing · **Precedes:** project work in `PHASE_1_PLAN.md` (sequencing in section 3)
+**Status:** approved 2026-11-14; each part is approved before it starts; part statuses are tracked in the Parts table below · **Depends on:** nothing · **Precedes:** project work in `PHASE_1_PLAN.md` (sequencing in section 3)
 
 ## 1. Goal and scope
 

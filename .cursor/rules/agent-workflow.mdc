@@ -3,15 +3,4 @@ description: Plan-step scope, human checkpoints, and branch/PR workflow
 alwaysApply: true
 ---
 
-# Agent workflow
-
-Read @.ai/rules/agent-workflow.md and follow it before implementing, creating a branch, opening or updating a pull request, or changing plan status. That file is the canonical workflow.
-
-- A human approves the specific plan step and its acceptance criteria before implementation.
-- One approved plan step per branch and pull request. Branch from the latest `main` as `step/<plan-step-id>-<slug>`.
-- If the step is ambiguous, crosses module boundaries, or depends on unfinished work, stop and ask.
-- "Evaluate", "assess", "check alignment", and "review" mean analysis only. Report findings, then wait.
-- After opening the pull request, stop. Do not merge, start the next step, or add unrelated changes.
-- Record canonical status only in the plan that owns that work item, in the pull request that changes it.
-- In a test-first step, the implementer never changes the tests or stub signatures from the reviewed `<plan-step-id>: tests first` commit; if one looks wrong, stop and report it.
-- Run the relevant checks in @.ai/scripts/verify.md. Never use `--no-verify`.
+Follow @.ai/rules/agent-workflow.md, the canonical standard. This file only tells Cursor when to load it.

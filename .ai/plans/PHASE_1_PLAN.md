@@ -63,7 +63,7 @@ Delivered in parts, one branch and pull request each:
   * The sidecar's `requirements.txt` installs on Python 3.12 with no broken requirements (`pip check`).
   * The `ci` workflow runs build, test, and the image builds and health checks on every pull request and push to `main`.
 * **Architecture tests:** Reference every backend project from `tests/Rva.ArchitectureTests` and implement the full suite listed in the rule's section 8.
-* **Schema tests:** the pgTAP suite in `infrastructure/postgres/tests/pgtap/` (run by `infrastructure/postgres/tests/run_tests.sh`) exercises versioning, as-of reads, actor/reason capture, key constraints, the simulation triggers, and each validation scenario (`p1-s00f`; see `.ai/scripts/verify.md`).
+* **Schema tests:** the pgTAP suite in `infrastructure/postgres/tests/pgtap/` (run by `infrastructure/postgres/tests/run_tests.sh`) exercises versioning, as-of reads, actor/reason capture, key constraints, the simulation triggers, and each validation scenario (`p1-s00f`; see `.agents/skills/verify/SKILL.md`).
 * **DDL lint:** `infrastructure/postgres/tests/ddl_lint.sql` checks the built schema against `.ai/rules/sql-ddl.md`; `run_tests.sh` runs it before the pgTAP suite, locally and in CI.
 * **Infrastructure:** `docker compose up` brings up `rva-core-db`, `rva-telemetry-db`, Mosquitto (with a mounted `mosquitto.conf`), and Redis on one network, and runs each database's init script.
 

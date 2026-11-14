@@ -4,11 +4,4 @@ globs: src/Rva.Intelligence/**/*.py,src/Rva.Intelligence/**/requirements*.txt
 alwaysApply: false
 ---
 
-# Python AI sidecar
-
-Read @.ai/rules/python-sidecar.md before changing `src/Rva.Intelligence`. That file is the canonical sidecar standard.
-
-- The sidecar has no dispatch authority. It returns forecasts and recommendations only. The C# core decides and audits.
-- Do not add a path where sidecar output directly issues a grid-impacting command.
-- Calls from the core are wrapped in a Polly circuit breaker with a Safe-Fail default. The sidecar does not implement fallback for core-side failures.
-- Stack is FastAPI, PyTorch, pandas, scikit-learn, and tslearn on Python 3.12. Real-time state comes from Redis, time series from TimescaleDB, and device telemetry from MQTT.
+Follow @.ai/rules/python-sidecar.md, the canonical standard. This file only tells Cursor when to load it.

@@ -3,12 +3,4 @@ description: Domain terms for DERs, assets, grid hierarchy, envelopes, and dispa
 alwaysApply: false
 ---
 
-# Domain glossary
-
-Read @.ai/rules/domain-glossary.md before naming or modeling a domain concept. That file is the canonical vocabulary.
-
-- A DER is an `Asset`. Components are never dispatched. An asset's rating is the limit at its one connection point, not the sum of its components.
-- Dispatch is capped by the smallest of the system limit, site limit, node ratings, and operating envelope. Unknown capacity is not unconstrained.
-- Parent links are the normal configuration. Ask GridTopology (`GetConstraintPath`) for the constraining path.
-- `InterconnectionType` is only `btm`, `ftm`, or `atm`. Islanding, voltage, and virtual metering are not interconnection types.
-- `TechnologyType` is technology only (`bess`, `solar_pv`, `wind`, `evse`), never customer segment or size.
+Follow @.ai/rules/domain-glossary.md, the canonical standard. This file only tells Cursor when to load it.

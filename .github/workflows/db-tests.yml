@@ -1,5 +1,5 @@
 # Database tests: builds rva_core and rva_telemetry from their init scripts, runs the DDL lint on both, and runs the
-# pgTAP suite against rva_core. Same script as local runs (.ai/scripts/verify.md).
+# pgTAP suite against rva_core. Same script as local runs (.agents/skills/verify/SKILL.md).
 name: db-tests
 
 on:

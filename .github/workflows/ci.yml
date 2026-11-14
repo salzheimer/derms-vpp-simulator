@@ -1,5 +1,5 @@
 # Build and test: the .NET solution (architecture, unit, host wiring, and module integration tests) with the same
-# commands as local runs (.ai/scripts/verify.md), and the container images. The module integration tests start their
+# commands as local runs (.agents/skills/verify/SKILL.md), and the container images. The module integration tests start their
 # own PostgreSQL containers through Testcontainers, using the runner's Docker. Each image that serves HTTP is started
 # and must answer its health endpoint. The database tests run separately in db-tests.yml.
 # No paths filter, for the same reason as test-guardrail.yml: a required check that is filtered out never reports.

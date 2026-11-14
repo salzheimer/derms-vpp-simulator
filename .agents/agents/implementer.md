@@ -23,7 +23,7 @@ Then check: you are on the step's branch, the tests-first commit is on it (`git 
 
 ## Read first
 
-1. `AGENTS.md`, `.ai/rules/agent-workflow.md`, `.ai/rules/testing.md`, and `.ai/scripts/verify.md`.
+1. `AGENTS.md`, `.ai/rules/agent-workflow.md`, `.ai/rules/testing.md`, and `.agents/skills/verify/SKILL.md`.
 2. The plan that defines the step: its scope, acceptance criteria, error-handling contract, decisions, and test catalogue.
 3. The rules for the area you are changing: `.ai/rules/csharp-monolith.md`, `.ai/rules/sql-ddl.md`, `.ai/rules/python-sidecar.md`, `.ai/rules/security.md`, `.ai/rules/domain-glossary.md`, as they apply.
 4. The tests-first commit itself (`git show <sha>`): every test, fixture, fake, and stub in it. The stubs' signatures are the API you implement. If you were given the test author's handoff, use its stub list; otherwise derive the list from the commit's changes outside the test folders.
@@ -59,7 +59,7 @@ If a test contradicts the plan, cannot pass without changing a signature, depend
 ## Verify
 
 1. Run the reviewed tests until they all pass.
-2. Run every check in the step's acceptance criteria. For a GridTopology part that includes `dotnet build VppAggregator.slnx` with no warnings, `dotnet test --solution VppAggregator.slnx` (architecture and test-guardrail suites included), and `infrastructure/postgres/tests/run_tests.sh` (`.ai/scripts/verify.md`).
+2. Run every check in the step's acceptance criteria. For a GridTopology part that includes `dotnet build VppAggregator.slnx` with no warnings, `dotnet test --solution VppAggregator.slnx` (architecture and test-guardrail suites included), and `infrastructure/postgres/tests/run_tests.sh` (`.agents/skills/verify/SKILL.md`).
 3. Check yourself against the tests-first commit:
    * `git diff <sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new files or new tests, nothing changed in the reviewed ones;
    * every signature in the stub list is unchanged in `git diff <sha>..HEAD`;

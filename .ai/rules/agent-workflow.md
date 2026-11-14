@@ -43,7 +43,7 @@ Use this checklist for each pull request. The shared items stay the same; the pl
 - [ ] The description summarizes the change, lists the step's acceptance criteria, records validation performed, and notes known risks or follow-up work.
 - [ ] The diff is focused; unrelated changes are removed or explained.
 - [ ] CI checks have completed successfully. Any failed or unavailable check is explained with its impact for human review.
-- [ ] Relevant local verification commands from `.ai/scripts/verify.md` were run, or skipped checks are explained.
+- [ ] Relevant local verification commands from `.agents/skills/verify/SKILL.md` were run, or skipped checks are explained.
 - [ ] Architecture, module ownership, security, and data rules in `AGENTS.md` and `.ai/rules/` are respected.
 - [ ] Tests cover the changed behavior, and existing tests were not weakened to make checks pass.
 - [ ] For a test-first step, the description names the tests-first commit, and the implementation did not change the reviewed tests (see "Test-first steps").
@@ -67,7 +67,7 @@ Use this checklist for each pull request. The shared items stay the same; the pl
 
 ## Validation and Enforcement
 
-- Run the relevant focused checks before requesting review and report their results accurately. Follow `.ai/scripts/verify.md` for repository commands.
+- Run the relevant focused checks before requesting review and report their results accurately. Follow `.agents/skills/verify/SKILL.md` for repository commands.
 - Never bypass failing required checks or branch protections. If a check cannot run or fails for an unrelated reason, explain that in the pull request for human assessment.
 - **Current enforcement:** the repository is private on the GitHub Free plan, so the `main` ruleset is not enforced server-side. The shared hooks in `.githooks/` (enabled per clone with `git config core.hooksPath .githooks`) block commits and pushes to `main` locally, and block commits that break the test framework standard (`.ai/rules/testing.md`); they can be bypassed with `--no-verify`, so never do that.
 - These instructions guide agent behavior; they do not technically enforce branch or pull request policy. Protect `main` in the Git hosting configuration, require pull requests and status checks, and use CI to validate plan-step metadata or changed-path scope when that enforcement is needed.
