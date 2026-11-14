@@ -1,6 +1,6 @@
 # Test framework guardrail: checks every MSBuild file and global.json against .ai/rules/testing.md (approved test
 # frameworks and packages, central package versions, MTP opt-in). Same tests as the pre-commit hook; this run is the
-# one nobody can skip locally. Intended to become a required check on main once rulesets can be enforced.
+# one nobody can skip locally. Whether it is a required check is in .ai/rules/agent-workflow.md (Validation and Enforcement).
 # No paths filter on purpose: a required check that is filtered out never reports, which blocks the pull request.
 name: test-guardrail
 
