@@ -28,6 +28,7 @@ Canonical build, test, and lint commands for this repo. Any AI tool or human sho
 | Container images | `docker build -f src/Rva.Backend/Rva.Host/Dockerfile -t rva-backend .`, `docker build -f src/Rva.Simulator/Dockerfile -t rva-simulator .`, `docker build -t rva-intelligence src/Rva.Intelligence` | Docker | Changes to a Dockerfile or an image's inputs |
 | Infrastructure | `docker compose -f infrastructure/docker/docker-compose.yml up -d` (add `--profile backend`, `simulator`, or `intelligence` with `--build`) | Docker | Running the stack locally |
 | Harness references | `.agents/skills/verify/scripts/check-references.sh` | bash, git | Any change to `AGENTS.md`, `.ai/rules/`, `.agents/`, a tool adapter, or a file they name (moving or renaming one) |
+| Contract changes | `.agents/skills/verify/scripts/check-contract-changes.sh --body-file <pr-description.md>` (optional `--base <ref>`, `--head <ref>`) | bash, git, perl | Before opening a pull request that changes a `.Contracts` project, an error code, or a route |
 
 CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and tests, images and health checks), `db-tests` (`run_tests.sh`), `test-guardrail`, and `harness` (`.github/workflows/harness.yml`: the harness checks below).
 
@@ -37,6 +38,15 @@ CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and test
 
 * a repo path named in `AGENTS.md`, `CLAUDE.md`, `.ai/rules/`, `.agents/`, `.claude/`, `.codex/`, `.cursor/rules/`, or `.github/*.md` does not exist. That covers backticked paths, `@`-references, and relative Markdown links. A backticked token counts as a path only if it starts with a top-level repo entry and holds no placeholder (`<Area>`), glob, or command syntax; build output (`/bin/`, `/obj/`) is skipped. Plans (`.ai/plans/`) are not checked, because they name files that past steps removed and future steps will add;
 * a `.cursor/rules/*.mdc` body is anything other than one line starting `Follow @.ai/rules/<same name>.md, `, pointing at a rule that exists.
+
+`check-contract-changes.sh` (the `contracts` job, pull requests only; it reruns when the description is edited) reports the pull request's public-surface changes (`.ai/rules/agent-workflow.md`, "Review items") in the job summary, and fails when a changed `.Contracts` file is not named:
+
+* It lists every file changed under a `.Contracts` project, every error code added or removed there (a `public const string` whose value is `<Module>.<Code>`), and every route mapping (`MapGet`, `MapPost`, ...) added or removed under `src/`.
+* Each listed Contracts file must appear in backticks, as its repo path or its file name, in the description's `## Review items` section. Text in HTML comments and in other sections does not count.
+* In a test-first step, changes are measured from the `<plan-step-id>: tests first` commit, because the tests-first review covered the stubs; only what the implementer added must be named. Otherwise they are measured from the merge base.
+* Naming a file records the item for review; it does not decide it. The decision goes in the plan's review-items table.
+
+When it fails, the summary lists each Contracts file marked **no**. Add it to "Review items" (after the human has approved the addition), and the job reruns when the description is saved.
 
 Write repo paths in full from the repo root (`infrastructure/postgres/tests/fixtures/`, never a path relative to some other folder), so the check and the reader resolve them the same way. When it fails, fix the reference or the file it points at in the same pull request; never weaken the check to make a change pass.
 
