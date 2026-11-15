@@ -1,0 +1,19 @@
+# AI harness checks (.ai/plans/AI_HARNESS_PLAN.md). Same script as local runs (.agents/skills/verify/SKILL.md).
+# references (ai-03): every repo path named in the agent instructions exists, and every Cursor rule is a thin adapter.
+# No paths filter, for the same reason as test-guardrail.yml: a required check that is filtered out never reports.
+name: harness
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check references and Cursor adapters
+        run: .agents/skills/verify/scripts/check-references.sh

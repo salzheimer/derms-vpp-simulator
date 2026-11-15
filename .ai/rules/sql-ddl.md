@@ -82,7 +82,7 @@ Follow `.ai/rules/csharp-monolith.md` section 9: edited state is system-versione
 Behavior the database owns (constraints, triggers, versioning, `_as_of` reads, append-only rules) is tested with pgTAP in `infrastructure/postgres/tests/pgtap/`, run by `run_tests.sh` (`.agents/skills/verify/SKILL.md`). Write the test first and watch it fail, then change the DDL.
 
 * One file per validation scenario in `docs/architecture/model-validation-scenarios.md`, named after its ID (`gt05_local_overload.sql`); every assertion description starts with the ID (`'GT-05: ...'`) so failures map back to the scenario.
-* Build data from the shared fixtures in `tests/fixtures/` (A–D, synthetic codes `FXA-`…`FXD-`), never from the development seed. Each file runs in one transaction and ends with `ROLLBACK`.
+* Build data from the shared fixtures in `infrastructure/postgres/tests/fixtures/` (A–D, synthetic codes `FXA-`…`FXD-`), never from the development seed. Each file runs in one transaction and ends with `ROLLBACK`.
 * Assert rejections by SQLSTATE (`throws_ok(sql, '23514', NULL, ...)`), not by message text. Make sure the error comes from the rule under test: an unrelated constraint can make a rejection test pass for the wrong reason.
 * A rule the scenario expects but the schema does not yet enforce goes between `todo_start('<gap and decision needed>')` and `todo_end()`, never weakened to pass. A TODO test may accept any error (`NULL` SQLSTATE) while the mechanism is undecided; when the DDL is fixed, remove the markers and pin the SQLSTATE the fix raises.
 * A rule owned by a backend module (cross-module references, rules spanning the hierarchy) is not enforced in SQL. Pin the boundary with a `lives_ok` test labelled `boundary:` and test the rule in the module.
