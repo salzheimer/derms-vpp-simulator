@@ -141,10 +141,11 @@ These cannot be done by an agent from this environment, or they are a human's de
 
 Not part of this plan. Listed in the order they should follow Stage A, because the harness depends on them or exposes them. Each one goes through its owning plan and the normal workflow, using the hardened harness:
 
-**Exception, before `ai-08`: fix the flaky tests** (changes `tests/`). Three tests fail intermittently in `ci` on runs that change no code:
+**Exception, before `ai-08`: fix the flaky tests** (changes `tests/`). Four tests fail intermittently in `ci` on runs that change no code:
 
 * `Rva.Host.Tests.DeploymentSettingsTests.All_failures_are_reported_together`: `ObjectDisposedException` (a disposed `IServiceProvider`) instead of `OptionsValidationException`.
 * `Rva.Host.Tests.DeploymentSettingsTests.Missing_or_invalid_setting_fails_startup_naming_the_key`: the most frequent, in 5 of the 6 failed `ci` runs from 2026-11-14 to 2026-11-15, two of them on `main`.
+* `Rva.Modules.GridTopology.Integration.Tests.Hosting.HostWiringTests.Missing_or_invalid_utility_time_zone_fails_startup_naming_the_key` (PR #37). With the two `DeploymentSettingsTests`, three of the four check that startup fails, so they may share a cause.
 * `Rva.Modules.GridTopology.Integration.Tests.Features.ConstraintPathTests.An_incomplete_path_behind_the_asset_endpoint_is_a_sanitized_500_logged_once`: `Assert.Single()` found no log entry (PR #37, passed on rerun).
 
 The runs that were rerun passed, including runs whose only changes were harness or plan files. `ai-08` makes `ci` a required check, so this fix is needed first, as its own small step, even though Stage A is not finished.
