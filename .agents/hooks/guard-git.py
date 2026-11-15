@@ -24,9 +24,10 @@ parser does not follow, gets through. CI and server-side protection are the gate
 "Validation and Enforcement"). Input it cannot read is allowed, with a note on stderr.
 
 Usage: guard-git.py [--adapter claude|codex|cursor] < hook-input.json
-  --adapter claude: skip when the input comes from Cursor (it has "cursor_version"). Cursor also loads Claude Code
-  hooks from .claude/settings.json; its native .cursor/hooks.json entry already covers the command, so this keeps
-  the check from running twice.
+  --adapter names the tool's adapter in the block message, so a live test shows which registration fired.
+  Cursor also loads Claude Code hooks from .claude/settings.json, so in Cursor's agent the check runs twice (native
+  and imported). That is deliberate (review item Z15): a second block is harmless, and it still blocks if Cursor
+  fails to load .cursor/hooks.json.
 Exit status: 0 allow, 2 block.
 """
 
@@ -247,8 +248,6 @@ def main(argv):
         return 0
     if not isinstance(payload, dict):
         return 0
-    if adapter == "claude" and "cursor_version" in payload:
-        return 0  # Cursor running the imported Claude Code hook; .cursor/hooks.json covers it
     command = command_from(payload)
     if not isinstance(command, str) or not command.strip():
         return 0

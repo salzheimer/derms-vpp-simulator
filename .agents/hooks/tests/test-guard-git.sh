@@ -96,13 +96,11 @@ run block "$on_step" $'cat > pr.md <<EOF\nnotes\nEOF\ngit push origin main'
 run allow "$on_step" $'git commit -m "first line\ngh pr merge 1"'
 run block "$on_step" $'git commit -m "x\ny" && gh pr merge 1'
 
-# The Claude adapter skips input that came from Cursor (cursor_version), and runs on Claude and Codex input.
-for tool in claude codex; do
+# The Claude adapter blocks on every tool's input, including Cursor's (Cursor runs imported Claude Code hooks too).
+for tool in claude codex cursor; do
     payload "$tool" "$on_step" 'git push origin main' | "$hook" --adapter claude 2>/dev/null
     [ $? -eq 2 ] && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL [$tool] --adapter claude should block"; }
 done
-payload cursor "$on_step" 'git push origin main' | "$hook" --adapter claude 2>/dev/null
-[ $? -eq 0 ] && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL [cursor] --adapter claude should skip"; }
 
 # Unreadable or non-shell input is allowed.
 for input in 'not json' '[]' '{"tool_name":"Read","tool_input":{"file_path":"x"}}'; do
