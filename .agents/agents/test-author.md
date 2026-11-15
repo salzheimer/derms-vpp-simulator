@@ -84,4 +84,8 @@ Return a handoff with:
 5. **Not run:** tests whose red check could not run, and why.
 6. **Commit:** the SHA of the tests-first commit.
 
+## Corrections
+
+When the implementer reports a reviewed test, fixture, or stub as wrong and a human agrees, you make the fix. Change only what was agreed, run the red check on the changed tests, and commit it on the step branch as one commit titled `<plan-step-id>: tests correction`, with nothing else in it. Hand off the SHA and what changed; a human reviews it before the implementer continues. The `harness / tests-first` check treats each correction commit as a new reviewed baseline, so implementation work never goes in one.
+
 End by stating that implementation starts only after a human has reviewed the tests and confirmed they match the approved criteria.

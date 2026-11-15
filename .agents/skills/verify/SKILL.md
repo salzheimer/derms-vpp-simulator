@@ -29,6 +29,7 @@ Canonical build, test, and lint commands for this repo. Any AI tool or human sho
 | Infrastructure | `docker compose -f infrastructure/docker/docker-compose.yml up -d` (add `--profile backend`, `simulator`, or `intelligence` with `--build`) | Docker | Running the stack locally |
 | Harness references | `.agents/skills/verify/scripts/check-references.sh` | bash, git | Any change to `AGENTS.md`, `.ai/rules/`, `.agents/`, a tool adapter, or a file they name (moving or renaming one) |
 | Contract changes | `.agents/skills/verify/scripts/check-contract-changes.sh --body-file <pr-description.md>` (optional `--base <ref>`, `--head <ref>`) | bash, git, perl | Before opening a pull request that changes a `.Contracts` project, an error code, or a route |
+| Tests first | `.agents/skills/verify/scripts/check-tests-first.sh` (optional `--base <ref>`, `--head <ref>`) | bash, git | Before opening the pull request for a test-first step |
 
 CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and tests, images and health checks), `db-tests` (`run_tests.sh`), `test-guardrail`, and `harness` (`.github/workflows/harness.yml`: the harness checks below).
 
@@ -47,6 +48,14 @@ CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and test
 * Naming a file records the item for review; it does not decide it. The decision goes in the plan's review-items table.
 
 When it fails, the summary lists each Contracts file marked **no**. Add it to "Review items" (after the human has approved the addition), and the job reruns when the description is saved.
+
+`check-tests-first.sh` (the `tests-first` job, `step/*` pull requests only) enforces the test-first rules (`.ai/rules/agent-workflow.md`, "Test-first steps"):
+
+* It finds the `<plan-step-id>: tests first` commit on the branch. With none, the step is not test-first: it passes with a notice.
+* It fails when a line under `tests/` or `infrastructure/postgres/tests/` that existed at a reviewed commit was modified or deleted afterwards. Added lines and new files pass; a moved or renamed test file counts as deleted. A `<plan-step-id>: tests correction` commit is a new reviewed baseline: changes inside it are not checked, and changes before it are checked against the earlier baseline.
+* It fails when any file under `src/` still contains `NotImplementedException` or `NotImplementedError`.
+
+When it fails, the summary shows the removed test lines or the stub locations. Restore the reviewed lines, or, if a reviewed test is wrong, stop and report it; never fold the fix into a correction commit yourself.
 
 Write repo paths in full from the repo root (`infrastructure/postgres/tests/fixtures/`, never a path relative to some other folder), so the check and the reader resolve them the same way. When it fails, fix the reference or the file it points at in the same pull request; never weaken the check to make a change pass.
 

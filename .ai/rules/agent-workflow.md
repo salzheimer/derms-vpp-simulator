@@ -19,13 +19,15 @@ A step can be done test-first, with the tests and the implementation written by 
    * never changes the signatures, contract types, or error codes the stubs define;
    * never adds public surface (see "Review items") without stopping first: it proposes the addition and continues only after a human approves it;
    * may add further tests, for example unit tests for internals it creates;
-   * if a reviewed test or stub looks wrong, stops and reports it. The fix goes back through the test author and a human, in a new commit; the implementer does not make it.
+   * if a reviewed test or stub looks wrong, stops and reports it. The fix goes back through the test author and a human, in a new commit titled `<plan-step-id>: tests correction`; the implementer does not make it. A human reviews that commit as they reviewed the tests-first commit, and confirms it before the implementer continues.
 4. **Pull request.** The implementer opens the pull request only when every test from the tests-first commit was run and passes, the step's other checks pass, and no stub still throws `NotImplementedException` or raises `NotImplementedError`. If any test fails or could not run, it stops with local commits and reports instead.
 
 The pull request names the tests-first commit and carries the stub list from the test author's handoff. The reviewer checks both rules:
 
 * **Tests unchanged:** `git diff <tests-first-sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new tests, or corrections approved through step 3.
 * **Signatures unchanged:** the stubs live in `src/`, where the implementer legitimately changes the bodies, so a path diff cannot catch this. Compare each signature in the stub list against `git diff <tests-first-sha>..HEAD` for its file.
+
+The `harness / tests-first` check (`.agents/skills/verify/SKILL.md`, "Harness checks") enforces the first rule on `step/*` pull requests: it fails when a line under `tests/` or `infrastructure/postgres/tests/` that existed at a reviewed commit (the tests-first commit or a `tests correction`) was modified or deleted afterwards, and when `NotImplementedException` or `NotImplementedError` is still under `src/`. It cannot see a test weakened by an added line (an early `return`, a new `Skip`), or a changed signature; the reviewer still checks both.
 
 ## Review items
 

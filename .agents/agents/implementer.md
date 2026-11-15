@@ -76,6 +76,8 @@ When the plan and the reviewed tests leave a choice open and it changes no publi
    * every signature in the stub list is unchanged in `git diff <sha>..HEAD`;
    * no stub still throws `NotImplementedException` or raises `NotImplementedError`.
 
+   `.agents/skills/verify/scripts/check-tests-first.sh` runs the first and last of these, as the `harness / tests-first` check does on the pull request. If the step had a correction, the reviewed baseline after it is the `<plan-step-id>: tests correction` commit.
+
 ## Commit and open the pull request
 
 Commit on the step branch, with messages starting `<plan-step-id>:`. Never skip a hook with `--no-verify`.
