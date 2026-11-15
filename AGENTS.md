@@ -22,18 +22,29 @@ Full detail: `.ai/rules/csharp-monolith.md` and `.ai/rules/python-sidecar.md`.
 - **CQRS / Saga** for command handling and the reconciliation workflow.
 - **Immutable audit trail** via Serilog `AuditTo` — append-only, tamper-evident.
 
+## How the AI layer is organized
+
+- **`.ai/` is what agents must know:** rules (`.ai/rules/`, constraints that always hold for an area) and plans (`.ai/plans/`, the roadmap, steps, and their status). Every "never" and "must" lives in a rule.
+- **`.agents/` is what agents can do:** agent definitions (`.agents/agents/`) and skills (`.agents/skills/`, procedures loaded for a task, with any scripts they run). A skill links to the rules it applies and does not repeat them.
+- **Tool folders hold thin adapters only:** `.claude/`, `.codex/`, `.cursor/rules/`, and `.github/copilot-instructions.md` point to the canonical files above and carry only tool-specific notes. Never put project guidance in an adapter; add it to the canonical file.
+
+## Finding the next piece of work
+
+`.ai/plans/MASTER_PLAN.md` (phases) → the phase plan (`PHASE_1_PLAN.md`, steps) → the step plan, such as `P1_S01_GRID_TOPOLOGY_PLAN.md`, whose Parts table holds each part's canonical status, dependencies, and acceptance criteria. Work on the AI harness itself is in `.ai/plans/AI_HARNESS_PLAN.md`. A part starts only when a human approves it (`.ai/rules/agent-workflow.md`).
+
 ## Where to look next
 
-- `.ai/rules/agent-workflow.md` — human checkpoints, plan-step scope, branch/PR workflow for agents, test-first steps.
-- `.agents/agents/` — canonical subagent definitions (`test-author.md`, `implementer.md`); `.claude/agents/` and `.codex/agents/` hold thin wrappers that point at them.
+- `.ai/rules/agent-workflow.md` — human checkpoints, plan-step scope, branch/PR workflow for agents, test-first steps, and what is enforced where.
+- `.agents/agents/` — canonical agent definitions (`test-author.md`, `implementer.md`); `.claude/agents/` and `.codex/agents/` hold thin wrappers that point at them.
+- `.agents/skills/` — canonical skills: `verify` (build, test, and lint commands) and `csharp-module-scaffolder`; `.claude/skills/` holds thin wrappers.
 - `.ai/rules/csharp-monolith.md` — C# module layout, conventions, sovereignty principle.
 - `.ai/rules/sql-ddl.md` — SQL DDL standard: required table/column comments and their checked format, naming, types; read before writing or changing any SQL.
 - `.ai/rules/python-sidecar.md` — sidecar conventions, the Consultant constraint.
 - `.ai/rules/testing.md` — test frameworks (xUnit v3 on Microsoft.Testing.Platform, pgTAP, pytest), approved test packages, where test projects live; read before adding or changing any test project.
 - `.ai/rules/domain-glossary.md` — domain terms (DER, `Asset`, `GridNode` hierarchy, `TechnologyType`, etc.).
 - `.ai/rules/security.md` — audit, RBAC, NERC CIP, Zero Trust, geospatial dispatch rule.
-- `.agents/skills/verify/SKILL.md` — build/test/lint commands.
-- `.ai/plans/MASTER_PLAN.md` — roadmap and phases.
+- `.ai/plans/MASTER_PLAN.md` — roadmap and phases; `.ai/plans/AI_HARNESS_PLAN.md` — hardening the AI harness.
+- `docs/architecture/` — diagrams of the target design (project structure, module dependencies, runtime, module contracts, data model, model validation scenarios). Rules win when they disagree; a change that affects a diagram updates it in the same pull request.
 
 ## Ground rules
 

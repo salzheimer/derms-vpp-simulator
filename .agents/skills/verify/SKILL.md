@@ -32,7 +32,7 @@ CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and test
 
 ## Setup (per clone)
 
-`git config core.hooksPath .githooks` enables the shared hooks in `.githooks/`, which block commits on `main` and pushes to `main`. The `pre-commit` hook also runs the test framework guardrail (`.ai/rules/testing.md`) when a commit touches MSBuild files or `global.json`. It needs `dotnet`, and adds a build of the architecture tests to those commits only. Changes reach `main` only through a pull request (see `.ai/rules/agent-workflow.md`). The hooks are a local safety net; branch protection on GitHub is the real enforcement.
+`git config core.hooksPath .githooks` enables the shared hooks in `.githooks/`, which block commits on `main` and pushes to `main`. The `pre-commit` hook also runs the test framework guardrail (`.ai/rules/testing.md`) when a commit touches MSBuild files or `global.json`. It needs `dotnet`, and adds a build of the architecture tests to those commits only. Changes reach `main` only through a pull request. The hooks are a local safety net that can be bypassed; for what is enforced where, see `.ai/rules/agent-workflow.md`, "Validation and Enforcement".
 
 ## C# (`src/Rva.Backend`, `src/Rva.Simulator`)
 
