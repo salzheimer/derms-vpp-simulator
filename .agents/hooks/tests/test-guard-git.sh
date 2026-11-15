@@ -59,6 +59,7 @@ run allow "$on_step" 'git config core.hooksPath .githooks'
 run allow "$on_step" 'git config --get core.hooksPath'
 run allow "$on_step" 'git commit -m "fix the -n flag and --no-verify docs"'
 run allow "$on_step" 'git commit -am "wip"'
+run block "$on_step" 'git commit -m "" -n'
 run block "$on_step" 'git commit -m wip -n'   # -n after the message is still the flag
 # Pushing to main.
 run block "$on_step" 'git push origin main'
@@ -88,6 +89,12 @@ run block "$on_step" $'git status\ngit push origin main'
 run allow "$on_step" 'git status && git log --oneline -3'
 run allow "$on_step" 'echo "git push origin main"'
 run allow "$on_step" 'dotnet build VppAggregator.slnx'
+# Heredoc bodies and quoted multi-line arguments are data, not commands.
+run allow "$on_step" $'git commit -F - <<\'EOF\'\ngh pr merge is blocked\ngit push origin main is blocked\nEOF'
+run allow "$on_step" $'cat > pr.md <<EOF\ngit commit --no-verify\nEOF\ngit status'
+run block "$on_step" $'cat > pr.md <<EOF\nnotes\nEOF\ngit push origin main'
+run allow "$on_step" $'git commit -m "first line\ngh pr merge 1"'
+run block "$on_step" $'git commit -m "x\ny" && gh pr merge 1'
 
 # The Claude adapter skips input that came from Cursor (cursor_version), and runs on Claude and Codex input.
 for tool in claude codex; do
@@ -107,6 +114,10 @@ done
 msg=$(payload claude "$on_step" 'gh pr merge 1' | "$hook" 2>&1 >/dev/null)
 case $msg in "Blocked by .agents/hooks/guard-git.py: gh pr merge"*) pass=$((pass + 1)) ;;
     *) fail=$((fail + 1)); echo "FAIL block message: $msg" ;; esac
+
+msg=$(payload cursor "$on_step" 'gh pr merge 1' | "$hook" --adapter cursor 2>&1 >/dev/null)
+case $msg in "Blocked by .agents/hooks/guard-git.py (--adapter cursor): "*) pass=$((pass + 1)) ;;
+    *) fail=$((fail + 1)); echo "FAIL block message should name the adapter: $msg" ;; esac
 
 echo "test-guard-git: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -11,7 +11,8 @@ It reads the hook input (JSON) on stdin and finds the shell command in either sh
   command              Cursor (beforeShellExecution)
 It blocks by exiting 2 with the reason on stderr, which all three tools treat as "deny".
 
-Blocked, in any segment of a compound command (&&, ||, ;, |, newlines, and `bash -c "..."`):
+Blocked, in any segment of a compound command (&&, ||, ;, |, newlines, and `bash -c "..."`). Heredoc bodies and
+quoted multi-line arguments (a commit message, a PR body) are data, not commands, and are not checked:
   * --no-verify on any git command, and `git commit -n`;
   * changing or unsetting core.hooksPath (`git -c core.hooksPath=...`, `git config core.hooksPath <other>`);
     setting it to .githooks, the documented setup, is allowed;
@@ -40,7 +41,8 @@ MAIN = "main"
 ALLOWED_HOOKS_PATH = ".githooks"
 WRAPPERS = {"env", "command", "sudo", "time", "nohup", "nice", "exec"}
 SHELLS = {"sh", "bash", "zsh", "dash"}
-OPERATORS = {"&&", "||", ";", "|", "&", ";;", "|&"}
+OPERATORS = {"&&", "||", ";", "|", "&", ";;", "|&", "\n"}
+HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 # git global options that take a separate value.
 GIT_VALUE_OPTS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
 # git commit options that take a separate value, and the short ones whose value can be attached (-mmsg).
@@ -51,27 +53,44 @@ COMMIT_SHORT_WITH_VALUE = set("mFCctS")
 PUSH_VALUE_OPTS = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
 
 
+def strip_heredocs(command):
+    """Drop heredoc bodies: the lines after a <<WORD line, up to the line that is just WORD."""
+    out, delimiters = [], []
+    for line in command.split("\n"):
+        if delimiters:
+            if line.strip() == delimiters[0]:
+                delimiters.pop(0)
+            continue
+        out.append(line)
+        delimiters.extend(m.group(2) for m in HEREDOC.finditer(line))
+    return "\n".join(out)
+
+
 def tokens(command):
     try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+        # Newlines separate commands, except inside quotes, so they are punctuation, not whitespace.
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|\n")
+        lexer.whitespace = " \t\r"
         lexer.whitespace_split = True
         return list(lexer)
-    except ValueError:  # unbalanced quotes: fall back to plain words
-        return command.split()
+    except ValueError:  # unbalanced quotes: fall back to plain words, line by line
+        words = []
+        for line in command.splitlines():
+            words.extend(line.split() + ["\n"])
+        return words
 
 
 def segments(command):
-    for line in command.splitlines() or [command]:
-        current = []
-        for tok in tokens(line):
-            if tok in OPERATORS:
-                if current:
-                    yield current
-                current = []
-            else:
-                current.append(tok)
-        if current:
-            yield current
+    current = []
+    for tok in tokens(strip_heredocs(command)):
+        if tok in OPERATORS or (tok and set(tok) <= set(";&|\n")):
+            if current:
+                yield current
+            current = []
+        else:
+            current.append(tok)
+    if current:
+        yield current
 
 
 def unwrap(seg):
@@ -236,7 +255,8 @@ def main(argv):
     cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) else os.getcwd()
     reason = check(command, cwd)
     if reason:
-        print(f"Blocked by .agents/hooks/guard-git.py: {reason}. "
+        via = f" (--adapter {adapter})" if adapter else ""
+        print(f"Blocked by .agents/hooks/guard-git.py{via}: {reason}. "
               "See .ai/rules/agent-workflow.md, \"Validation and Enforcement\".", file=sys.stderr)
         return 2
     return 0
