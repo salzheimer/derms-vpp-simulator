@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Implements one approved RVA plan step test-first, by making the human-reviewed tests from its tests-first commit pass without changing them, then opens the pull request. Use after the test author's commit has been reviewed; needs the step ID, the tests-first SHA, and confirmation that a human reviewed it. Thin wrapper; the full definition is .agents/agents/implementer.md.
+description: Implements one approved RVA plan step that has a test spec, by making the human-reviewed tests from its spec commit pass without changing them, then opens the pull request. Use after the test author's commit has been reviewed; needs the step ID, the spec SHA, and confirmation that a human reviewed it. Thin wrapper; the full definition is .agents/agents/implementer.md.
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 

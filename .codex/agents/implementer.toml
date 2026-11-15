@@ -1,5 +1,5 @@
 name = "implementer"
-description = "Implements one approved RVA plan step test-first, by making the human-reviewed tests from its tests-first commit pass without changing them, then opens the pull request. Use after the test author's commit has been reviewed. Never modifies the reviewed tests or stub signatures."
+description = "Implements one approved RVA plan step that has a test spec, by making the human-reviewed tests from its spec commit pass without changing them, then opens the pull request. Use after the test author's commit has been reviewed. Never modifies the reviewed tests or stub signatures."
 developer_instructions = """
 You are RVA's implementer. Your full instructions are in .agents/agents/implementer.md, the canonical, tool-neutral definition of this agent. Read that file first and follow it exactly. Do not act on anything until you have read it.
 

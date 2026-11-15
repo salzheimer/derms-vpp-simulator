@@ -7,7 +7,7 @@
 #   * error codes added or removed there: public const string values of the form "<Module>.<Code>" (reported);
 #   * HTTP route mappings (Map{Get,Post,Put,Patch,Delete}) added or removed anywhere under src/ (reported).
 #
-# In a test-first step, the tests-first commit (subject "<plan-step-id>: tests first") was reviewed by a human, so
+# In a step with a test spec, the spec commit (subject "<plan-step-id>: test spec") was reviewed by a human, so
 # changes are measured from that commit instead of the base: only what the implementer added must be named.
 #
 # A file counts as named when its repo path or its file name appears in backticks in the "## Review items" section
@@ -36,8 +36,8 @@ done
 [ -n "$body_file" ] && [ -f "$body_file" ] || { echo "check-contract-changes: --body-file <file> is required" >&2; exit 2; }
 
 from=$(git merge-base "$base" "$head") || { echo "check-contract-changes: no merge base for $base and $head" >&2; exit 2; }
-tests_first=$(git log --format='%H %s' "$from..$head" | grep -E '^[0-9a-f]+ [^ ]+: tests first$' | tail -1 | cut -d' ' -f1)
-[ -n "$tests_first" ] && from=$tests_first
+spec=$(git log --format='%H %s' "$from..$head" | grep -E '^[0-9a-f]+ [^ ]+: test spec$' | tail -1 | cut -d' ' -f1)
+[ -n "$spec" ] && from=$spec
 
 contracts=':(glob)src/**/*.Contracts/**'
 changed=$(git diff --name-only "$from" "$head" -- "$contracts")
@@ -65,8 +65,8 @@ done
 report() {
     echo "## Contract change check"
     echo
-    if [ -n "$tests_first" ]; then
-        echo "Measured from the tests-first commit \`$(git rev-parse --short "$tests_first")\` to \`$(git rev-parse --short "$head")\`: changes in that commit were reviewed with the tests."
+    if [ -n "$spec" ]; then
+        echo "Measured from the spec commit \`$(git rev-parse --short "$spec")\` to \`$(git rev-parse --short "$head")\`: changes in that commit were reviewed with the tests."
     else
         echo "Measured from the merge base \`$(git rev-parse --short "$from")\` to \`$(git rev-parse --short "$head")\`."
     fi

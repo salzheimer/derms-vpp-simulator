@@ -8,32 +8,34 @@
 - Agents may analyze, propose changes, implement, test, and prepare pull requests. A human reviews the complete diff and validation results, decides whether to merge, and approves deployments. Agent output or review is not a substitute for human approval.
 - 'Evaluate', 'assess', 'check alignment' and 'review' mean analysis only. Report findings and proposed changes, then wait before implementing.
 
-## Test-first steps
+## Test spec steps
 
-A step can be done test-first, with the tests and the implementation written by different agents. The point is that the tests come from the acceptance criteria and the implementation is not allowed to shape them. The agent definitions are in `.agents/agents/`.
+A step can have a test spec, with the tests and the implementation written by different agents. The point is that the tests come from the acceptance criteria and the implementation is not allowed to shape them. The agent definitions are in `.agents/agents/`.
 
-1. **Tests first.** The test author (`.agents/agents/test-author.md`) writes the step's tests, plus stubs that throw `NotImplementedException` (.NET) or raise `NotImplementedError` (Python) so they compile. It runs them to confirm each new test fails for the right reason, and commits them on the step branch as `<plan-step-id>: tests first`.
-2. **Human review.** A human reviews the tests-first commit against the acceptance criteria before implementation starts.
-3. **Implementation.** The implementer (`.agents/agents/implementer.md`) starts only when given the step ID, the tests-first SHA, and confirmation that a human reviewed that commit. It makes the reviewed tests pass by filling in the stubs and adding whatever else the behavior needs. The implementer:
-   * never modifies, deletes, skips, or weakens a test from the tests-first commit, and never changes its fixtures or fakes in a way that changes what a test checks;
+1. **Test spec.** The test author (`.agents/agents/test-author.md`) writes the step's tests, plus stubs that throw `NotImplementedException` (.NET) or raise `NotImplementedError` (Python) so they compile. It runs them to confirm each new test fails for the right reason, and commits them on the step branch as `<plan-step-id>: test spec`.
+2. **Spec review.** A human reviews the spec commit against the acceptance criteria before implementation starts.
+3. **Implementation.** The implementer (`.agents/agents/implementer.md`) starts only when given the step ID, the spec SHA, and confirmation that a human reviewed that commit. It makes the reviewed tests pass by filling in the stubs and adding whatever else the behavior needs. The implementer:
+   * never modifies, deletes, skips, or weakens a test from the spec commit, and never changes its fixtures or fakes in a way that changes what a test checks;
    * never changes the signatures, contract types, or error codes the stubs define;
    * never adds public surface (see "Review items") without stopping first: it proposes the addition and continues only after a human approves it;
    * may add further tests, for example unit tests for internals it creates;
-   * if a reviewed test or stub looks wrong, stops and reports it. The fix goes back through the test author and a human, in a new commit; the implementer does not make it.
-4. **Pull request.** The implementer opens the pull request only when every test from the tests-first commit was run and passes, the step's other checks pass, and no stub still throws `NotImplementedException` or raises `NotImplementedError`. If any test fails or could not run, it stops with local commits and reports instead.
+   * if a reviewed test or stub looks wrong, stops and reports it. The fix goes back through the test author and a human, in a new commit titled `<plan-step-id>: spec correction`; the implementer does not make it. A human reviews that commit as they reviewed the spec commit, and confirms it before the implementer continues.
+4. **Pull request.** The implementer opens the pull request only when every test from the spec commit was run and passes, the step's other checks pass, and no stub still throws `NotImplementedException` or raises `NotImplementedError`. If any test fails or could not run, it stops with local commits and reports instead.
 
-The pull request names the tests-first commit and carries the stub list from the test author's handoff. The reviewer checks both rules:
+The pull request names the spec commit and carries the stub list from the test author's handoff. The reviewer checks both rules:
 
-* **Tests unchanged:** `git diff <tests-first-sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new tests, or corrections approved through step 3.
-* **Signatures unchanged:** the stubs live in `src/`, where the implementer legitimately changes the bodies, so a path diff cannot catch this. Compare each signature in the stub list against `git diff <tests-first-sha>..HEAD` for its file.
+* **Tests unchanged:** `git diff <spec-sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new tests, or corrections approved through step 3.
+* **Signatures unchanged:** the stubs live in `src/`, where the implementer legitimately changes the bodies, so a path diff cannot catch this. Compare each signature in the stub list against `git diff <spec-sha>..HEAD` for its file.
+
+The `harness / test-spec` check (`.agents/skills/verify/SKILL.md`, "Harness checks") enforces the first rule on `step/*` pull requests: it fails when a line under `tests/` or `infrastructure/postgres/tests/` that existed at a reviewed commit (the spec commit or a `spec correction`) was modified or deleted afterwards, and when `NotImplementedException` or `NotImplementedError` is still under `src/`. It cannot see a test weakened by an added line (an early `return`, a new `Skip`), or a changed signature, and it trusts the `spec correction` title without knowing whether a human reviewed that commit. The reviewer checks all three: the check's summary lists each correction commit to confirm.
 
 ## Review items
 
 A review item is anything an agent decided that a human has not: a **departure** from the plan, an **open choice** the plan and the tests left to the agent, or an **addition to the public surface**.
 
-**Public surface** means a public type or member in a `.Contracts` project, an error code, or an HTTP route. All of it comes from the plan or the tests-first commit:
+**Public surface** means a public type or member in a `.Contracts` project, an error code, or an HTTP route. All of it comes from the plan or the spec commit:
 
-* The test author stubs every type, member, error code, and route the step's tests reach, including every error code a failure-path test asserts. Surface the plan does not name is called out in the handoff as a shape the human confirms at the tests-first review.
+* The test author stubs every type, member, error code, and route the step's tests reach, including every error code a failure-path test asserts. Surface the plan does not name is called out in the handoff as a shape the human confirms at the spec review.
 * The implementer adds no public surface beyond the stubs without stopping first. It proposes the addition (what, where, and why the behavior needs it), and continues only after a human approves it. Internal types and members are not public surface.
 
 **Where they are recorded.** Each item goes in a review-items table in the plan that defines the work, either under the part it belongs to or in one table with a Part column, with these columns: `#` (a short ID), the item, what was built or proposed, why, and **Decision**. The pull request that raises an item lists it in its "Review items" section (`.github/pull_request_template.md`) and links the table.
@@ -62,7 +64,7 @@ Use this checklist for each pull request. The shared items stay the same; the pl
 - [ ] Relevant local verification commands from `.agents/skills/verify/SKILL.md` were run, or skipped checks are explained.
 - [ ] Architecture, module ownership, security, and data rules in `AGENTS.md` and `.ai/rules/` are respected.
 - [ ] Tests cover the changed behavior, and existing tests were not weakened to make checks pass.
-- [ ] For a test-first step, the description names the tests-first commit, and the implementation did not change the reviewed tests (see "Test-first steps").
+- [ ] For a step with a test spec, the description names the spec commit, and the implementation did not change the reviewed tests (see "Test spec steps").
 - [ ] Every review item (departure, open choice, public-surface addition) is in the plan's review-items table and in the description's "Review items" section; no public surface was added without approval (see "Review items").
 - [ ] No review item this part depends on is still `open` and blocking (see "Review items", the decision gate).
 - [ ] Affected documentation and plans are updated.

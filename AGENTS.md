@@ -34,7 +34,7 @@ Full detail: `.ai/rules/csharp-monolith.md` and `.ai/rules/python-sidecar.md`.
 
 ## Where to look next
 
-- `.ai/rules/agent-workflow.md` — human checkpoints, plan-step scope, branch/PR workflow for agents, test-first steps, and what is enforced where.
+- `.ai/rules/agent-workflow.md` — human checkpoints, plan-step scope, branch/PR workflow for agents, test spec steps, and what is enforced where.
 - `.agents/agents/` — canonical agent definitions (`test-author.md`, `implementer.md`); `.claude/agents/` and `.codex/agents/` hold thin wrappers that point at them.
 - `.agents/skills/` — canonical skills: `verify` (build, test, and lint commands) and `csharp-module-scaffolder`; `.claude/skills/` holds thin wrappers.
 - `.ai/rules/csharp-monolith.md` — C# module layout, conventions, sovereignty principle.
