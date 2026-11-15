@@ -1,0 +1,25 @@
+# Code owners (AI_HARNESS_PLAN.md, ai-08). A pull request that changes one of these paths asks the owner for review.
+# These are the files that steer agents or check their work: the harness, the tool adapters and git hooks, the
+# architecture and pgTAP tests, and the module contracts. Review is required only once the main ruleset is
+# enforced (.ai/rules/agent-workflow.md, "Validation and Enforcement").
+# Later lines take precedence; keep one owner per line so a new owner can be added in one place.
+
+# Agent instructions and the harness
+/AGENTS.md                          @salzheimer
+/CLAUDE.md                          @salzheimer
+/.ai/                               @salzheimer
+/.agents/                           @salzheimer
+
+# Tool adapters and git hooks
+/.claude/                           @salzheimer
+/.codex/                            @salzheimer
+/.cursor/                           @salzheimer
+/.githooks/                         @salzheimer
+/.github/                           @salzheimer
+
+# Tests that guard the architecture and the schema
+/tests/Rva.ArchitectureTests/       @salzheimer
+/infrastructure/postgres/tests/     @salzheimer
+
+# Module contracts (public surface)
+/src/**/*.Contracts/                @salzheimer
