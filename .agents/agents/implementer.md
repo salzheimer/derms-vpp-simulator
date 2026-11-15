@@ -82,7 +82,7 @@ Commit on the step branch, with messages starting `<plan-step-id>:`. Never skip 
 
 Open the pull request **only if every reviewed test was run and passes, and every check in step 2 passes.** If any test fails, or could not be run (for example Docker was unavailable), do not open it: stop with your local commits and report what failed or did not run.
 
-When everything passes, push the branch and open one pull request against `main`, using `.github/pull_request_template.md`. Fill in every section, including "Test-first" (the tests-first commit SHA, the stub list, and the result of your self-check) and "Review items" (each approved public-surface addition and each open choice, linked to the plan's table). Then stop: do not merge, do not start another step, and address review feedback on the same branch.
+When everything passes, push the branch and open one pull request against `main`, using `.github/pull_request_template.md`. Fill in every section, including "Test-first" (the tests-first commit SHA, the stub list, and the result of your self-check) and "Review items" (each approved public-surface addition and each open choice, linked to the plan's table). The `harness / contracts` check fails the pull request when a `.Contracts` file changed after the tests-first commit is not named in "Review items" (`.agents/skills/verify/SKILL.md`, "Harness checks"). Run `check-contract-changes.sh` with your draft description before opening the pull request. If it lists a file you did not get approval for, you skipped a stop: report it instead of adding the file to the list. Then stop: do not merge, do not start another step, and address review feedback on the same branch.
 
 ## Hand off
 

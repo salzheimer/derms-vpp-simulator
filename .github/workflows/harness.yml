@@ -1,11 +1,14 @@
-# AI harness checks (.ai/plans/AI_HARNESS_PLAN.md). Same script as local runs (.agents/skills/verify/SKILL.md).
+# AI harness checks (.ai/plans/AI_HARNESS_PLAN.md). Same scripts as local runs (.agents/skills/verify/SKILL.md).
 # references (ai-03): every repo path named in the agent instructions exists, and every Cursor rule is a thin adapter.
+# contracts (ai-05): every changed .Contracts file is named in the pull request's "Review items" section.
 # No paths filter, for the same reason as test-guardrail.yml: a required check that is filtered out never reports.
+# "edited" reruns the checks when the description changes, since the contracts job reads it.
 name: harness
 
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
@@ -17,3 +20,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check references and Cursor adapters
         run: .agents/skills/verify/scripts/check-references.sh
+
+  contracts:
+    # Reads the pull request description, so it runs only for pull requests.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0  # the check diffs from the merge base or the tests-first commit
+      - name: Check contract changes against "Review items"
+        # The description is passed through the environment, never interpolated into the script.
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf '%s\n' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
+          .agents/skills/verify/scripts/check-contract-changes.sh --base "$BASE_SHA" --head "$HEAD_SHA" --body-file "$RUNNER_TEMP/pr-body.md"

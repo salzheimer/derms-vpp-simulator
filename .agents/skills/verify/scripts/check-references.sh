@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Checks the AI harness's references (AI_HARNESS_PLAN.md, ai-03):
 #   1. Every repo path named in the agent instructions exists: backticked paths, @-references, and relative
-#      Markdown links in AGENTS.md, CLAUDE.md, .ai/rules/, .agents/, .claude/, .codex/, .cursor/rules/, and
-#      .github/*.md. Plans (.ai/plans/) are not checked: they name files that past steps removed and future
+#      Markdown links in the instruction files (*.md, *.mdc, *.toml) of AGENTS.md, CLAUDE.md, .ai/rules/, .agents/,
+#      .claude/, .codex/, .cursor/rules/, and .github/*.md. Scripts and settings files are not scanned. Plans (.ai/plans/) are not checked: they name files that past steps removed and future
 #      steps will add.
 #   2. Every Cursor rule (.cursor/rules/*.mdc) is a thin adapter: frontmatter, then exactly one body line,
 #      "Follow @.ai/rules/<same name>.md, ...", pointing at a rule that exists.
@@ -53,7 +53,9 @@ clean() {  # strip ./, a #anchor, a :line suffix, and trailing sentence punctuat
 
 echo "check-references: repo paths in agent instructions"
 for file in $(list_files); do
-    case $file in *.json) continue ;; esac   # settings files hold no references
+    # Instruction files only (Markdown, Cursor rules, Codex TOML). Scripts and settings are code, not instructions:
+    # backticks there are shell or data syntax, not path references.
+    case $file in *.md|*.mdc|*.toml) ;; *) continue ;; esac
     dir=$(dirname "$file")
 
     # Backticked tokens and @-references, resolved from the repo root.
