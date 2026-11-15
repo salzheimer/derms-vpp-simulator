@@ -27,8 +27,18 @@ Canonical build, test, and lint commands for this repo. Any AI tool or human sho
 | Python tests and lint | `pytest` and `ruff check .` | Python 3.12 | Not configured yet (see Python below) |
 | Container images | `docker build -f src/Rva.Backend/Rva.Host/Dockerfile -t rva-backend .`, `docker build -f src/Rva.Simulator/Dockerfile -t rva-simulator .`, `docker build -t rva-intelligence src/Rva.Intelligence` | Docker | Changes to a Dockerfile or an image's inputs |
 | Infrastructure | `docker compose -f infrastructure/docker/docker-compose.yml up -d` (add `--profile backend`, `simulator`, or `intelligence` with `--build`) | Docker | Running the stack locally |
+| Harness references | `.agents/skills/verify/scripts/check-references.sh` | bash, git | Any change to `AGENTS.md`, `.ai/rules/`, `.agents/`, a tool adapter, or a file they name (moving or renaming one) |
 
-CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and tests, images and health checks), `db-tests` (`run_tests.sh`), and `test-guardrail`.
+CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and tests, images and health checks), `db-tests` (`run_tests.sh`), `test-guardrail`, and `harness` (`.github/workflows/harness.yml`: the harness checks below).
+
+## Harness checks
+
+`check-references.sh` (the `references` job in the `harness` workflow) fails a pull request when:
+
+* a repo path named in `AGENTS.md`, `CLAUDE.md`, `.ai/rules/`, `.agents/`, `.claude/`, `.codex/`, `.cursor/rules/`, or `.github/*.md` does not exist. That covers backticked paths, `@`-references, and relative Markdown links. A backticked token counts as a path only if it starts with a top-level repo entry and holds no placeholder (`<Area>`), glob, or command syntax; build output (`/bin/`, `/obj/`) is skipped. Plans (`.ai/plans/`) are not checked, because they name files that past steps removed and future steps will add;
+* a `.cursor/rules/*.mdc` body is anything other than one line starting `Follow @.ai/rules/<same name>.md, `, pointing at a rule that exists.
+
+Write repo paths in full from the repo root (`infrastructure/postgres/tests/fixtures/`, never a path relative to some other folder), so the check and the reader resolve them the same way. When it fails, fix the reference or the file it points at in the same pull request; never weaken the check to make a change pass.
 
 ## Setup (per clone)
 
@@ -60,8 +70,8 @@ The host fails at startup, naming the key, if a required setting under `Rva:Depl
 
 It prints one TAP line per assertion and ends with `Result: PASS`; it exits non-zero if initialization, either lint, or any assertion fails. Lines marked `# TODO` are known schema gaps recorded as tests (see `docs/architecture/model-validation-scenarios.md`): they print `not ok` but do not fail the run. When a TODO test starts passing, pg_prove reports `TODO passed`; remove its `todo_start`/`todo_end` so it becomes enforcing.
 
-* **DDL lint** (`tests/ddl_lint.sql`) checks the built schema against `.ai/rules/sql-ddl.md` (comments and their facts tags, naming, types, cross-schema foreign keys). Separately, the `rva_core` init fails if any table or column in `topology` or `simulation` has no comment.
-* **pgTAP suite** (`tests/pgtap/`, one file per validation scenario, e.g. `gt05_local_overload.sql`) builds its fixtures from `tests/fixtures/` inside one transaction and rolls back. The test image (`tests/Dockerfile`) is the production PostGIS image plus pgTAP and pg_prove; `rva_core_init.sql` never installs pgTAP.
+* **DDL lint** (`infrastructure/postgres/tests/ddl_lint.sql`) checks the built schema against `.ai/rules/sql-ddl.md` (comments and their facts tags, naming, types, cross-schema foreign keys). Separately, the `rva_core` init fails if any table or column in `topology` or `simulation` has no comment.
+* **pgTAP suite** (`infrastructure/postgres/tests/pgtap/`, one file per validation scenario, e.g. `gt05_local_overload.sql`) builds its fixtures from `infrastructure/postgres/tests/fixtures/` inside one transaction and rolls back. The test image (`infrastructure/postgres/tests/Dockerfile`) is the production PostGIS image plus pgTAP and pg_prove; `rva_core_init.sql` never installs pgTAP.
 
 To run the lint or a single test file against the running compose stack instead (init scripts run only on an empty volume, so after changing one, recreate it with `docker compose -f infrastructure/docker/docker-compose.yml down -v`):
 

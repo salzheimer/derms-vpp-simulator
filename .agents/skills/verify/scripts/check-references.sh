@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Checks the AI harness's references (AI_HARNESS_PLAN.md, ai-03):
+#   1. Every repo path named in the agent instructions exists: backticked paths, @-references, and relative
+#      Markdown links in AGENTS.md, CLAUDE.md, .ai/rules/, .agents/, .claude/, .codex/, .cursor/rules/, and
+#      .github/*.md. Plans (.ai/plans/) are not checked: they name files that past steps removed and future
+#      steps will add.
+#   2. Every Cursor rule (.cursor/rules/*.mdc) is a thin adapter: frontmatter, then exactly one body line,
+#      "Follow @.ai/rules/<same name>.md, ...", pointing at a rule that exists.
+#
+# A backticked token counts as a path only if it starts with a top-level repo entry (see ROOTS) and holds no
+# placeholder or command syntax (spaces, <, >, *, {, }, $, |). Build output (/bin/, /obj/) is skipped, since a
+# fresh checkout has none. Trailing #anchors and :line suffixes are ignored.
+#
+# Usage: check-references.sh [repo-root]   (default: the git top level of the current directory)
+# Exit status: 0 when every check passes, 1 otherwise. Runs on bash 3.2+ (macOS) and Linux.
+
+set -u
+
+root=${1:-$(git rev-parse --show-toplevel)}
+cd "$root" || { echo "check-references: cannot enter $root" >&2; exit 2; }
+
+ROOTS='AGENTS.md CLAUDE.md README.md global.json Directory.Packages.props VppAggregator.slnx .ai/ .agents/ .claude/ .codex/ .cursor/ .github/ .githooks/ .mcp/ docs/ infrastructure/ src/ tests/'
+
+failures=0
+fail() { echo "  $1"; failures=$((failures + 1)); }
+
+# Tracked files when the root is a git work tree (as in CI); otherwise every file under the scanned folders.
+list_files() {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        git ls-files -- AGENTS.md CLAUDE.md .ai/rules .agents .claude .codex .cursor/rules '.github/*.md'
+    else
+        for f in AGENTS.md CLAUDE.md; do [ -f "$f" ] && echo "$f"; done
+        find .ai/rules .agents .claude .codex .cursor/rules -type f 2>/dev/null | sed 's|^\./||'
+        find .github -maxdepth 1 -type f -name '*.md' 2>/dev/null | sed 's|^\./||'
+    fi
+}
+
+is_repo_path() {
+    case $1 in *' '*|*'<'*|*'>'*|*'*'*|*'{'*|*'}'*|*'$'*|*'|'*) return 1 ;; esac
+    case $1 in */bin/*|*/obj/*) return 1 ;; esac   # build output: exists only after a build, never in a fresh checkout
+    for r in $ROOTS; do
+        case $1 in "$r"|"$r"*) return 0 ;; esac
+    done
+    return 1
+}
+
+clean() {  # strip ./, a #anchor, a :line suffix, and trailing sentence punctuation
+    p=${1#./}
+    p=${p%%#*}
+    p=$(printf '%s' "$p" | sed -E 's/:[0-9]+(-[0-9]+)?$//; s/[.,;:)]+$//')
+    printf '%s' "$p"
+}
+
+echo "check-references: repo paths in agent instructions"
+for file in $(list_files); do
+    case $file in *.json) continue ;; esac   # settings files hold no references
+    dir=$(dirname "$file")
+
+    # Backticked tokens and @-references, resolved from the repo root.
+    { grep -oE '`[^`]+`' "$file" | tr -d '`'; grep -oE '@\.?[A-Za-z0-9_][A-Za-z0-9_./-]*' "$file" | sed 's/^@//'; } |
+    while IFS= read -r token; do
+        p=$(clean "$token")
+        is_repo_path "$p" || continue
+        [ -e "$p" ] || echo "$file: $p"
+    done
+
+    # Relative Markdown links, resolved from the file's own folder.
+    grep -oE '\]\([^)]+\)' "$file" | sed -E 's/^\]\(//; s/\)$//' |
+    while IFS= read -r link; do
+        case $link in http://*|https://*|mailto:*|\#*) continue ;; esac
+        p=$(clean "$link")
+        [ -n "$p" ] || continue
+        [ -e "$dir/$p" ] || echo "$file: $link (link)"
+    done
+done > "${TMPDIR:-/tmp}/check-references.$$"
+while IFS= read -r line; do fail "missing: $line"; done < "${TMPDIR:-/tmp}/check-references.$$"
+rm -f "${TMPDIR:-/tmp}/check-references.$$"
+
+echo "check-references: Cursor rules are thin adapters"
+for mdc in .cursor/rules/*.mdc; do
+    [ -e "$mdc" ] || continue
+    name=$(basename "$mdc" .mdc)
+    body=$(awk 'n >= 2 { print } /^---$/ { n++ }' "$mdc" | grep -v '^[[:space:]]*$')
+    count=$(printf '%s\n' "$body" | grep -c .)
+    if [ "$count" -ne 1 ]; then
+        fail "$mdc: body has $count non-empty lines; expected one pointer line"
+    elif ! printf '%s' "$body" | grep -q "^Follow @\.ai/rules/$name\.md, "; then
+        fail "$mdc: body must start with \"Follow @.ai/rules/$name.md, \""
+    elif [ ! -f ".ai/rules/$name.md" ]; then
+        fail "$mdc: points at .ai/rules/$name.md, which does not exist"
+    fi
+done
+
+if [ "$failures" -gt 0 ]; then
+    echo "check-references: $failures problem(s). Fix the reference, or the file it points at, in this pull request." >&2
+    exit 1
+fi
+echo "check-references: PASS"
