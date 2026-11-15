@@ -30,7 +30,7 @@ This plan comes from three assessments made on 2026-11-13 and 2026-11-14: harnes
 | H2 | **Skills stay in `.agents/skills/`**, where some tools (Codex) discover them natively. Claude Code needs a wrapper in `.claude/skills/`. Check before relying on Cursor and Copilot skill support (section 6). |
 | H3 | **A thin adapter is frontmatter plus one pointer.** A Cursor `.mdc` body is one line: `Follow @.ai/rules/<topic>.md, the canonical standard. This file only tells Cursor when to load it.` A skill or agent wrapper names its canonical file and holds only tool-specific notes, such as sandbox workarounds. |
 | H4 | **Constraints stay rules; procedures become skills.** Any "never" or safety constraint must live in a rule, because a skill is loaded only when the agent chooses it. A skill links to its rules and does not repeat them. |
-| H5 | **Enforcement order: CI and the server first, hooks second.** Claude Code hooks are a convenience for one tool. The real enforcement is CI checks that every tool's output passes, plus server-side branch protection. |
+| H5 | **Enforcement order: CI and the server first, hooks second.** Agent hooks are a convenience: each tool runs them only when configured, and any agent can run without them. The real enforcement is CI checks that every tool's output passes, plus server-side branch protection. |
 | H6 | **The harness lives outside the product code.** Harness checks are shell scripts and CI jobs under `.agents/` and `.github/`, and they add no packages. They read `src/` and `tests/` but never change them (scope rule, section 1). A check that would be stronger as a test inside `tests/` is recorded as a follow-up in section 7. |
 | H7 | **Plan IDs** for this plan are `ai-NN`, with branches named `step/ai-NN-<slug>`, one PR per part, and the workflow in `agent-workflow.md`. |
 
@@ -66,7 +66,7 @@ Each part is one branch and one PR. In every part, the acceptance criteria also 
 
 | Part | Scope | Depends on | Status | Acceptance criteria |
 |---|---|---|---|---|
-| `ai-07` | **Claude Code hooks and sandbox settings** (convenience layer, H5). Add a `PreToolUse` hook that denies `git commit --no-verify`, pushes to `main`, and `gh pr merge`. Move the dotnet and Docker sandbox workarounds out of the prose in the agent wrappers and into sandbox settings where the settings support it; check the exact keys against the current Claude Code docs. **Human applies:** `.claude/settings.json` cannot be written from the agent sandbox. | — | Not started | Each denied command is blocked in a Claude Code session. The agent wrappers keep only the workarounds the settings cannot express. |
+| `ai-07` | **Agent hooks, shared across tools, and sandbox settings** (convenience layer, H5). One canonical hook script, `.agents/hooks/guard-git.sh`, denies `git commit --no-verify`, pushes to `main`, and `gh pr merge`. It reads the hook input on stdin from each supported tool (the shell command is `tool_input.command` in Claude Code and `command` in Cursor's `beforeShellExecution`; confirm the Codex field in its docs) and blocks with exit code 2. Thin adapters register it: `.claude/settings.json` (`PreToolUse`, Bash), `.codex/hooks.json` (`PreToolUse`), and `.cursor/hooks.json` (`beforeShellExecution`). Hooks follow the agent, not the editor: the Claude Code and Codex extensions read the same files in VS Code and Cursor. Cursor's own agent uses its native file, so turn off its import of Claude Code hooks for this repo, or check that the hook does not run twice. VS Code Copilot (`.github/hooks/`) is out of scope while it is not in use. `check-references.sh` checks that every hook adapter runs a script that exists under `.agents/hooks/`. `AGENTS.md` says hooks follow the know/do layout. Move the dotnet and Docker sandbox workarounds out of the prose in the agent wrappers and into sandbox settings where the settings support it. Check every hook and sandbox key against the current Claude Code, Codex, and Cursor docs. **Human applies:** `.claude/settings.json` cannot be written from the agent sandbox, and the Codex and Cursor hook files may need the same. | — | Not started | The script blocks each denied command, and allows a plain commit and a push to a `step/*` branch, when fed a recorded sample input from each tool (Claude Code, Codex, Cursor), in a test the verify skill documents. Each denied command is blocked in a live Claude Code session, a Codex session, and a Cursor agent session, and runs the hook once. `check-references.sh` fails on an adapter that points at a missing script. The agent wrappers keep only the workarounds the settings cannot express. |
 | `ai-08` | **Server-side protection and `CODEOWNERS`.** Agent: add `.github/CODEOWNERS` covering `AGENTS.md`, `.ai/`, `.agents/`, `.github/`, `tests/Rva.ArchitectureTests/`, `infrastructure/postgres/tests/`, and `src/**/*.Contracts/` (this changes only `.github/`). **Human:** decide the GitHub plan or repository visibility, then turn on a `main` ruleset requiring PRs, code-owner review, and the checks `ci`, `test-guardrail`, `ai-03`, `ai-05`, and `ai-06`. Make `ci` required only after the flaky host test is fixed (section 7). | `ai-03`, `ai-06` | Not started | A direct push to `main` is rejected by GitHub. A PR with a failing required check cannot be merged. `agent-workflow.md` "Current enforcement" is updated to say so. |
 
 ### Tier 4: Generic agents and skills (Stage A)
@@ -124,7 +124,7 @@ Departures and open choices raised by this plan's parts (`agent-workflow.md`, "R
 These cannot be done by an agent from this environment, or they are a human's decision:
 
 * **Approve this plan** and each part's acceptance criteria before work starts (`agent-workflow.md`).
-* **`.claude/settings.json` and `.claude/skills/`** are write-denied in the agent sandbox. The `ai-07` hooks and every new Claude skill wrapper (`ai-01`, `ai-10`, `ai-12`–`ai-14`, `ai-16`–`ai-18`) need a human edit or explicit approval for an unsandboxed write.
+* **`.claude/settings.json` and `.claude/skills/`** are write-denied in the agent sandbox. The `ai-07` hook adapters (the Codex and Cursor ones too, if the sandbox denies them) and every new Claude skill wrapper (`ai-01`, `ai-10`, `ai-12`–`ai-14`, `ai-16`–`ai-18`) need a human edit or explicit approval for an unsandboxed write.
 * **Branch protection (`ai-08`):** choose a GitHub plan or repository visibility that enforces rulesets on `main`. Check GitHub's current plan matrix.
 * **Contract changes (`ai-05`):** a human decides each "Review items" entry the check reports.
 
@@ -132,7 +132,7 @@ These cannot be done by an agent from this environment, or they are a human's de
 
 * Whether your Cursor version supports skills in `.agents/skills/`. If it doesn't, the matching rule points to the skill file instead (H2).
 * Whether Codex discovers `.agents/skills/` natively for every skill, including new ones, so no Codex skill wrappers are needed.
-* The exact Claude Code sandbox and hook setting keys for `ai-07`.
+* The exact hook keys and input fields for `ai-07` in Claude Code, Codex, and Cursor, the Claude Code sandbox keys, whether your Codex version needs hooks switched on in `config.toml`, and how Cursor's import of Claude Code hooks is turned off.
 
 ## 7. After the harness: project decisions and changes
 
@@ -154,7 +154,7 @@ Not part of this plan. Listed in the order they should follow Stage A, because t
 | **R2** The `ai-05` check works on changed files and lines, not compiled signatures, so it can miss a change it can't recognize (for example a public member added in a non-Contracts file the contracts expose). | It catches the Y5 case. The reflection snapshot test (section 7, item 2) closes the rest once project work resumes. |
 | **R3** The `ai-06` check flags legitimate test corrections. | Corrections go through the test author and a human in a marked commit, which the check recognizes. |
 | **R4** Moving procedures into skills means an agent that never loads the skill misses them. | H4: every constraint stays in a rule, and the agent definitions name the skills they must use. |
-| **R5** Hooks give a false sense of enforcement. | H5: hooks cover one tool only. CI and server-side protection (`ai-08`) are the real gate. |
+| **R5** Hooks give a false sense of enforcement. | H5: hooks run only in tools that load them, and can be skipped. CI and server-side protection (`ai-08`) are the real gate. |
 | **R6** Harness work delays project work. | This is intended (section 3). Stage A is mostly small, text-only parts, and Stage B runs alongside project work. |
 
 ## 9. Verification
