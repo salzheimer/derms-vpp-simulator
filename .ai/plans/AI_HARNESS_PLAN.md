@@ -67,7 +67,7 @@ Each part is one branch and one PR. In every part, the acceptance criteria also 
 | Part | Scope | Depends on | Status | Acceptance criteria |
 |---|---|---|---|---|
 | `ai-07` | **Claude Code hooks and sandbox settings** (convenience layer, H5). Add a `PreToolUse` hook that denies `git commit --no-verify`, pushes to `main`, and `gh pr merge`. Move the dotnet and Docker sandbox workarounds out of the prose in the agent wrappers and into sandbox settings where the settings support it; check the exact keys against the current Claude Code docs. **Human applies:** `.claude/settings.json` cannot be written from the agent sandbox. | — | Not started | Each denied command is blocked in a Claude Code session. The agent wrappers keep only the workarounds the settings cannot express. |
-| `ai-08` | **Server-side protection and `CODEOWNERS`.** Agent: add `.github/CODEOWNERS` covering `AGENTS.md`, `.ai/`, `.agents/`, `.github/`, `tests/Rva.ArchitectureTests/`, `infrastructure/postgres/tests/`, and `src/**/*.Contracts/` (this changes only `.github/`). **Human:** decide the GitHub plan or repository visibility, then turn on a `main` ruleset requiring PRs, code-owner review, and the checks `ci`, `test-guardrail`, `ai-03`, `ai-05`, and `ai-06`. | `ai-03`, `ai-06` | Not started | A direct push to `main` is rejected by GitHub. A PR with a failing required check cannot be merged. `agent-workflow.md` "Current enforcement" is updated to say so. |
+| `ai-08` | **Server-side protection and `CODEOWNERS`.** Agent: add `.github/CODEOWNERS` covering `AGENTS.md`, `.ai/`, `.agents/`, `.github/`, `tests/Rva.ArchitectureTests/`, `infrastructure/postgres/tests/`, and `src/**/*.Contracts/` (this changes only `.github/`). **Human:** decide the GitHub plan or repository visibility, then turn on a `main` ruleset requiring PRs, code-owner review, and the checks `ci`, `test-guardrail`, `ai-03`, `ai-05`, and `ai-06`. Make `ci` required only after the flaky host test is fixed (section 7). | `ai-03`, `ai-06` | Not started | A direct push to `main` is rejected by GitHub. A PR with a failing required check cannot be merged. `agent-workflow.md` "Current enforcement" is updated to say so. |
 
 ### Tier 4: Generic agents and skills (Stage A)
 
@@ -113,6 +113,7 @@ Departures and open choices raised by this plan's parts (`agent-workflow.md`, "R
 | Z6 | `ai-05` | Report every added or removed `public const string` as an error code | Only constants whose value is `<Module>.<Code>` are reported as error codes | On the `p1-s01c` replay the plain rule also listed `GridNodeLevels` and `AssetMakeups` constants; they stay covered because their file must be named | `open` |
 | Z7 | `ai-05` | Name each changed Contracts file | A file counts as named by its repo path or its file name alone | Easier to write; two Contracts files with the same name in different modules would match each other | `open` |
 | Z8 | `ai-05` | — | Route changes are reported in the summary but do not fail the check | The plan makes only Contracts files mandatory | `open` |
+| Z9 | `ai-05` | — | `check-references.sh` (from `ai-03`) now scans instruction files only (`*.md`, `*.mdc`, `*.toml`) | The new script was tracked on CI but not locally, so only CI scanned it; the escaped backticks in its `echo` strings read as broken paths. Scripts are code, not instructions | `information` |
 
 ## 5. Human actions
 
@@ -132,6 +133,8 @@ These cannot be done by an agent from this environment, or they are a human's de
 ## 7. After the harness: project decisions and changes
 
 Not part of this plan. Listed in the order they should follow Stage A, because the harness depends on them or exposes them. Each one goes through its owning plan and the normal workflow, using the hardened harness:
+
+**Exception, before `ai-08`: fix the flaky host test** (changes `tests/`). `Rva.Host.Tests.DeploymentSettingsTests.All_failures_are_reported_together` intermittently fails with `ObjectDisposedException` (a disposed `IServiceProvider`) instead of `OptionsValidationException`. It failed 4 of 8 `ci` runs on 2026-11-15, including one on `main` and runs whose only change was a plan file. `ai-08` makes `ci` a required check, so this fix is needed first, as its own small step, even though Stage A is not finished.
 
 1. **Settle X1–X13 (`p1-s01c`) and Y1–Y6 (`p1-s01d`).** Each is a human keep/change decision, recorded with `ai-13`. Under the `ai-04` gate, `p1-s01e` can start only once the items it depends on are decided (probably X1 and X7, since its writes extend the same contracts). `p1-s01g` needs X6 and X11.
 2. **Contract surface snapshot test** (changes `tests/`). A test in `tests/Rva.ArchitectureTests` that dumps every `.Contracts` project's public types and members, and its error codes, by reflection, and compares them with committed approved files using xUnit `Assert`. It is stronger than the `ai-05` path check because it sees signatures, not just changed files. A human approves each update to an approved file. Do this as its own step before `p1-s01e`, if possible.
