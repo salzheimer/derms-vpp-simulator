@@ -105,8 +105,8 @@ Departures and open choices raised by this plan's parts (`agent-workflow.md`, "R
 
 | # | Part | Item | Built | Why | Decision |
 |---|---|---|---|---|---|
-| Z1 | `ai-01` | The `grep` for `scripts/verify.md` was to return nothing | Two plan files keep the old path: `P1_S00F_DDL_TESTS_PLAN.md` (a completed step's record) and this plan (which describes the move) | Rewriting a completed plan changes history | `open` |
-| Z2 | `ai-01` | Scope named the adapters and the verify move only | Also updated `.gitignore` comments and `docs/architecture/project-structure.md` | Both named files the PR removed | `open` |
+| Z1 | `ai-01` | The `grep` for `scripts/verify.md` was to return nothing | Two plan files keep the old path: `P1_S00F_DDL_TESTS_PLAN.md` (a completed step's record) and this plan (which describes the move) | Rewriting a completed plan changes history | `keep (S. A., 2026-11-14)` |
+| Z2 | `ai-01` | Scope named the adapters and the verify move only | Also updated `.gitignore` comments and `docs/architecture/project-structure.md` | Both named files the PR removed | `keep (S. A., 2026-11-14)` |
 | Z3 | `ai-03` | Check every repo path in `.ai/` | `.ai/plans/` is not checked | Plans name files past steps removed and future steps will add; revisited in section 10 | `keep (S. A., 2026-11-14)` |
 | Z4 | `ai-03` | — | Build output (`/bin/`, `/obj/`) is skipped by the reference check | A fresh checkout has no build output; the agent wrappers name a built test executable | `open` |
 | Z5 | `ai-03` | — | One path in `sql-ddl.md` written in full | The check found it | `information` |
