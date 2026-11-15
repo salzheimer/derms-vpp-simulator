@@ -29,8 +29,10 @@ The user or parent agent names the approved plan step and its acceptance criteri
   * The shared fixtures (`infrastructure/postgres/tests/fixtures/`, A–D) are loaded by every pgTAP file and by the integration-test template database. A change to them may reference only schema that already exists at the tests-first commit; otherwise every existing test breaks, not just the new ones. Data that needs schema the step has not built yet goes in the new test file itself, or in a new fixture file that only the new tests load.
 * **Stubs (.NET and Python only):** the minimum production code that lets the tests compile and reach the code under test:
   * types, records, interfaces, and members named or implied by the plan, with the signatures the tests call;
-  * error codes the plan names (for example `GridTopology.AssetNotFound`), as the values the tests assert;
+  * error codes the plan names (for example `GridTopology.AssetNotFound`), as the values the tests assert. **Every error code a failure-path test asserts exists as a stub constant**, so the implementer never has to invent one;
   * the registration or route mapping needed for a test to reach a stub (DI registration, `Map<Area>Endpoints`).
+
+  The stubs are the step's whole public surface: public types and members in `.Contracts`, error codes, and HTTP routes (`agent-workflow.md`, "Review items"). Anything the plan does not name, but the tests need, is a shape you chose: list it in the handoff so the human confirms it at the tests-first review.
 
   Every stub body throws `NotImplementedException` (.NET) or raises `NotImplementedError` (Python). A stub contains no logic, no validation, no persistence mapping, and no SQL. It follows the module rules (`internal` by default, feature folders, contracts only in `.Contracts`) so the architecture tests still pass.
 
@@ -76,9 +78,10 @@ Work on the step's branch (`step/<plan-step-id>-<slug>`, created from the latest
 Return a handoff with:
 
 1. **Coverage:** a table of each criterion or test ID, the test(s) that cover it, the file, and the red-check result.
-2. **Stubs:** every production type and signature you added, with its file. These are the API the implementer must keep, and the pull request carries this list so the reviewer can check it. Call out any shape you had to choose because the plan did not fix it, so the human can confirm it.
-3. **Not covered:** criteria without a test, and why.
-4. **Not run:** tests whose red check could not run, and why.
-5. **Commit:** the SHA of the tests-first commit.
+2. **Stubs:** every production type and signature you added, with its file. These are the API the implementer must keep, and the pull request carries this list so the reviewer can check it.
+3. **Shapes to confirm:** public surface the plan did not name (a type, member, error code, or route) and any shape you had to choose because the plan did not fix it. Each is a review item: the human decides it at the tests-first review. You do not edit the plan; the implementer records the item and its decision in the plan's review-items table, in the step's pull request.
+4. **Not covered:** criteria without a test, and why.
+5. **Not run:** tests whose red check could not run, and why.
+6. **Commit:** the SHA of the tests-first commit.
 
 End by stating that implementation starts only after a human has reviewed the tests and confirmed they match the approved criteria.

@@ -31,7 +31,7 @@ Then check: you are on the step's branch, the tests-first commit is on it (`git 
 ## What you may change
 
 * Stub bodies: replace every `NotImplementedException` / `NotImplementedError` with the real behavior.
-* Any further production code the behavior needs, within the step's scope and the module rules: internal types, persistence mappings, DI registration, endpoints.
+* Any further **internal** production code the behavior needs, within the step's scope and the module rules: internal types, persistence mappings, DI registration, and the bodies of the endpoints the stubs map. New public surface is not on this list; see "When the behavior needs new public surface".
 * Schema DDL, when the step's scope includes it, following `.ai/rules/sql-ddl.md` (comments, naming, types, lint).
 * New tests, for example unit tests for internals you create. They come in addition to the reviewed tests, never in place of them.
 * The documentation and plan status the step names, in this pull request (`agent-workflow.md`, "Plan Status Tracking").
@@ -40,6 +40,7 @@ Then check: you are on the step's branch, the tests-first commit is on it (`git 
 
 * Any test, fixture, or fake from the tests-first commit, in a way that changes what a test checks. That includes deleting, skipping, weakening an assertion, widening an expected error, or adding a `todo_start`.
 * The signatures, contract types, or error codes the stubs define.
+* The public surface, beyond the stubs, without a human's approval (next sections).
 * The acceptance criteria, or the step's scope.
 * Test packages, and the architecture tests.
 
@@ -56,6 +57,16 @@ Make the tests pass by implementing the behavior the criteria describe, the way 
 
 If a test contradicts the plan, cannot pass without changing a signature, depends on a fixture that is wrong, or passes for the wrong reason: stop. Do not work around it and do not fix it yourself. Report the test, what is wrong, and the change you would propose. The correction goes back through the test author and a human, in a new commit, before you continue.
 
+## When the behavior needs new public surface
+
+Public surface is a public type or member in a `.Contracts` project, an error code, or an HTTP route (`agent-workflow.md`, "Review items"). The stubs define all of it that the reviewed tests reach. If the behavior needs more, for example an error code for a failure the plan did not name: stop before adding it. Do not add it and list it afterwards.
+
+Report the proposed addition: what it is, the file it goes in, why the behavior needs it, and the alternatives you considered (for example an existing error code that almost fits). Continue only after a human approves it. Then add it, record it in the plan's review-items table for this part, and list it under "Review items" in the pull request. Internal types and members never need approval.
+
+## Other choices the plan leaves open
+
+When the plan and the reviewed tests leave a choice open and it changes no public surface (for example which of two qualifying nodes to report), make the choice, and record it as an open choice in the plan's review-items table for this part, with Decision left `open`, and in the pull request. Do not stop for these unless the choice crosses a module boundary or changes the step's scope.
+
 ## Verify
 
 1. Run the reviewed tests until they all pass.
@@ -71,7 +82,7 @@ Commit on the step branch, with messages starting `<plan-step-id>:`. Never skip 
 
 Open the pull request **only if every reviewed test was run and passes, and every check in step 2 passes.** If any test fails, or could not be run (for example Docker was unavailable), do not open it: stop with your local commits and report what failed or did not run.
 
-When everything passes, push the branch and open one pull request against `main`, using `.github/pull_request_template.md`. Fill in every section, including "Test-first": the tests-first commit SHA, the stub list, and the result of your self-check. Then stop: do not merge, do not start another step, and address review feedback on the same branch.
+When everything passes, push the branch and open one pull request against `main`, using `.github/pull_request_template.md`. Fill in every section, including "Test-first" (the tests-first commit SHA, the stub list, and the result of your self-check) and "Review items" (each approved public-surface addition and each open choice, linked to the plan's table). Then stop: do not merge, do not start another step, and address review feedback on the same branch.
 
 ## Hand off
 
@@ -81,5 +92,6 @@ Report:
 2. **Checks:** each command from step 2 and its result; any check that could not run, and why.
 3. **Self-check:** the diff and signature results from step 3.
 4. **Changes:** the production files you changed or added, and any new tests.
-5. **Stopped on:** any reviewed test or stub you reported as wrong, if you stopped.
-6. **Pull request:** its URL, or why it was not opened.
+5. **Stopped on:** any reviewed test or stub you reported as wrong, or any public-surface addition you proposed and are waiting on, if you stopped.
+6. **Review items:** each public-surface addition (with who approved it), each shape the test author's handoff listed to confirm (with the human's decision), and each open choice, as recorded in the plan's review-items table.
+7. **Pull request:** its URL, or why it was not opened.
