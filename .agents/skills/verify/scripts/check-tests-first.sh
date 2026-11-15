@@ -11,6 +11,8 @@
 # "<plan-step-id>: tests correction", which a human reviews like the tests-first commit. Each such commit starts a
 # new reviewed baseline: changes inside it are not checked, and changes between two reviewed commits are checked
 # against the earlier one. Commits are walked along the first-parent chain; merge commits are skipped as markers.
+# The check trusts the commit title: it cannot tell whether a human reviewed a correction, so the report lists each
+# one for the reviewer to confirm.
 #
 # With no tests-first commit in the range, the step is not test-first: the check prints a notice and passes.
 #
@@ -69,8 +71,10 @@ while [ $# -gt 0 ]; do
     segments="$segments
 - \`$(git rev-parse --short "$start")\`..\`$(git rev-parse --short "$end")\`"
     [ "$start" = "$end" ] && continue
-    # --no-renames: a moved test file shows as deleted, so its old lines count as removed.
-    files=$(git diff --no-renames --numstat "$start" "$end" -- "$tests" "$pgtests" | awk '$2 != "0" { print $3 }')
+    # Modified and deleted files only (new files, binary ones included, always pass). --no-renames: a moved test
+    # file shows as deleted, so its old lines count as removed.
+    files=$(git diff --no-renames --diff-filter=MD --numstat "$start" "$end" -- "$tests" "$pgtests" |
+            awk '$2 != "0" { print $3 }')
     for f in $files; do
         changed="$changed $f"
         lines=$(git diff --no-renames -U0 "$start" "$end" -- "$f" |
@@ -90,6 +94,13 @@ report() {
     echo "Tests-first commit \`$(git rev-parse --short "$tests_first")\`. Reviewed tests are compared over these ranges (each starts at a reviewed commit: the tests-first commit or a \`tests correction\`):"
     echo "$segments"
     echo
+    corrections=$(printf '%s\n' "$reviewed" | sed 1d)
+    if [ -n "$corrections" ]; then
+        echo "Correction commits (the check trusts their titles; **confirm a human reviewed each one**):"
+        echo
+        for c in $corrections; do echo "- \`$(git log -1 --format='%h %s' "$c")\`"; done
+        echo
+    fi
     if [ -n "$changed" ]; then
         echo "**Fail:** reviewed test lines were modified or deleted (\`-\` lines below). Only added lines and new files are allowed after review. If a reviewed test is wrong, stop and report it; the fix goes through the test author and a human, in a \`<plan-step-id>: tests correction\` commit."
         echo

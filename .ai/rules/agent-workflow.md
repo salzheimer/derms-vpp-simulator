@@ -27,7 +27,7 @@ The pull request names the tests-first commit and carries the stub list from the
 * **Tests unchanged:** `git diff <tests-first-sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new tests, or corrections approved through step 3.
 * **Signatures unchanged:** the stubs live in `src/`, where the implementer legitimately changes the bodies, so a path diff cannot catch this. Compare each signature in the stub list against `git diff <tests-first-sha>..HEAD` for its file.
 
-The `harness / tests-first` check (`.agents/skills/verify/SKILL.md`, "Harness checks") enforces the first rule on `step/*` pull requests: it fails when a line under `tests/` or `infrastructure/postgres/tests/` that existed at a reviewed commit (the tests-first commit or a `tests correction`) was modified or deleted afterwards, and when `NotImplementedException` or `NotImplementedError` is still under `src/`. It cannot see a test weakened by an added line (an early `return`, a new `Skip`), or a changed signature; the reviewer still checks both.
+The `harness / tests-first` check (`.agents/skills/verify/SKILL.md`, "Harness checks") enforces the first rule on `step/*` pull requests: it fails when a line under `tests/` or `infrastructure/postgres/tests/` that existed at a reviewed commit (the tests-first commit or a `tests correction`) was modified or deleted afterwards, and when `NotImplementedException` or `NotImplementedError` is still under `src/`. It cannot see a test weakened by an added line (an early `return`, a new `Skip`), or a changed signature, and it trusts the `tests correction` title without knowing whether a human reviewed that commit. The reviewer checks all three: the check's summary lists each correction commit to confirm.
 
 ## Review items
 
