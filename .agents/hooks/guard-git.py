@@ -19,6 +19,10 @@ quoted multi-line arguments (a commit message, a PR body) are data, not commands
   * pushing to main: a refspec whose destination is main, --all or --mirror, or a plain `git push` while on main;
   * merging a pull request: `gh pr merge`, or `gh api` on a pulls/<n>/merge endpoint.
 
+Also blocked: an MCP tool call that merges a pull request (a tool named like merge_pull_request, from any MCP
+server, for example the GitHub connector's mcp__claude_ai_github__merge_pull_request). The adapters register the
+hook for MCP calls too: PreToolUse with matcher mcp__.* (Claude Code, Codex) and beforeMCPExecution (Cursor).
+
 This is a convenience layer (H5), not enforcement: an agent run without hooks, or a command built in a way this
 parser does not follow, gets through. CI and server-side protection are the gate (.ai/rules/agent-workflow.md,
 "Validation and Enforcement"). Input it cannot read is allowed, with a note on stderr.
@@ -239,6 +243,24 @@ def command_from(payload):
     return shlex.join(cmd) if isinstance(cmd, list) else cmd
 
 
+MCP_MERGE = re.compile(r"(^|__)(merge_pull_request|merge_pr|pull_request_merge)$", re.IGNORECASE)
+
+
+def check_mcp(payload):
+    """Return a reason when the hook input is an MCP tool call that merges a pull request."""
+    name = payload.get("tool_name") or payload.get("toolName")
+    if isinstance(name, str) and MCP_MERGE.search(name):
+        return f"the MCP tool {name} merges a pull request; a human merges after review"
+    return None
+
+
+def block(reason, adapter):
+    via = f" (--adapter {adapter})" if adapter else ""
+    print(f"Blocked by .agents/hooks/guard-git.py{via}: {reason}. "
+          "See .ai/rules/agent-workflow.md, \"Validation and Enforcement\".", file=sys.stderr)
+    return 2
+
+
 def main(argv):
     adapter = argv[argv.index("--adapter") + 1] if "--adapter" in argv[:-1] else None
     try:
@@ -248,17 +270,17 @@ def main(argv):
         return 0
     if not isinstance(payload, dict):
         return 0
+    reason = check_mcp(payload)
+    if reason:
+        return block(reason, adapter)
+    if payload.get("hook_event_name") == "beforeMCPExecution":
+        return 0  # Cursor's MCP input has a "command" field: the server's launch command, not a shell command
     command = command_from(payload)
     if not isinstance(command, str) or not command.strip():
         return 0
     cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) else os.getcwd()
     reason = check(command, cwd)
-    if reason:
-        via = f" (--adapter {adapter})" if adapter else ""
-        print(f"Blocked by .agents/hooks/guard-git.py{via}: {reason}. "
-              "See .ai/rules/agent-workflow.md, \"Validation and Enforcement\".", file=sys.stderr)
-        return 2
-    return 0
+    return block(reason, adapter) if reason else 0
 
 
 if __name__ == "__main__":

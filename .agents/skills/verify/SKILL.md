@@ -40,7 +40,8 @@ CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and test
 
 * a repo path named in `AGENTS.md`, `CLAUDE.md`, `.ai/rules/`, `.agents/`, `.claude/`, `.codex/`, `.cursor/rules/`, or `.github/*.md` does not exist. That covers backticked paths, `@`-references, and relative Markdown links. A backticked token counts as a path only if it starts with a top-level repo entry and holds no placeholder (`<Area>`), glob, or command syntax; build output (`/bin/`, `/obj/`) is skipped. Plans (`.ai/plans/`) are not checked, because they name files that past steps removed and future steps will add;
 * a `.cursor/rules/*.mdc` body is anything other than one line starting `Follow @.ai/rules/<same name>.md, `, pointing at a rule that exists;
-* a hook `command` in `.claude/settings.json`, `.codex/hooks.json`, or `.cursor/hooks.json` does not run a script under `.agents/hooks/`, or runs one that does not exist.
+* a hook `command` in `.claude/settings.json`, `.codex/hooks.json`, or `.cursor/hooks.json` does not run a script under `.agents/hooks/`, or runs one that does not exist;
+* an adapter is missing or no longer registers `.agents/hooks/guard-git.py` for both shell commands and MCP calls (with its own `--adapter` name), or `.claude/settings.json` no longer denies `mcp__claude_ai_github__merge_pull_request`. This keeps an agent from removing its own guard in a pull request.
 
 `check-contract-changes.sh` (the `contracts` job, pull requests only; it reruns when the description is edited) reports the pull request's public-surface changes (`.ai/rules/agent-workflow.md`, "Review items") in the job summary, and fails when a changed `.Contracts` file is not named:
 

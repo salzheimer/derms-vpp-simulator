@@ -12,6 +12,17 @@
             "statusMessage": "Checking git command"
           }
         ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.agents/hooks/guard-git.py\" --adapter codex",
+            "timeout": 10,
+            "statusMessage": "Checking MCP tool call"
+          }
+        ]
       }
     ]
   }

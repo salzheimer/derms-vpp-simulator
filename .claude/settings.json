@@ -1,8 +1,23 @@
 {
+  "permissions": {
+    "deny": [
+      "mcp__claude_ai_github__merge_pull_request"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.agents/hooks/guard-git.py\" --adapter claude",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
         "hooks": [
           {
             "type": "command",

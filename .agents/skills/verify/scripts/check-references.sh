@@ -8,6 +8,8 @@
 #      "Follow @.ai/rules/<same name>.md, ...", pointing at a rule that exists.
 #   3. Every hook adapter (.claude/settings.json, .codex/hooks.json, .cursor/hooks.json) is thin: each hook "command"
 #      runs a script under .agents/hooks/ that exists.
+#   4. Every hook adapter still registers the git guard for shell commands and MCP calls, and .claude/settings.json
+#      still denies the GitHub MCP merge tool.
 #
 # A backticked token counts as a path only if it starts with a top-level repo entry (see ROOTS) and holds no
 # placeholder or command syntax (spaces, <, >, *, {, }, $, |). Build output (/bin/, /obj/) is skipped, since a
@@ -111,6 +113,48 @@ for adapter in .claude/settings.json .codex/hooks.json .cursor/hooks.json; do
     done < "${TMPDIR:-/tmp}/check-references.$$"
     rm -f "${TMPDIR:-/tmp}/check-references.$$"
 done
+
+echo "check-references: every hook adapter registers the git guard"
+# The guard (.agents/hooks/guard-git.py) must stay registered for shell commands and MCP calls in every adapter, and
+# the Claude Code deny rule for the GitHub merge tool must stay, so an agent cannot quietly drop its own guard.
+python3 - <<'EOF' > "${TMPDIR:-/tmp}/check-references.$$"
+import json, os
+GUARD = ".agents/hooks/guard-git.py"
+MERGE_TOOL = "mcp__claude_ai_github__merge_pull_request"
+required = {
+    ".claude/settings.json": [("PreToolUse", "Bash", "claude"), ("PreToolUse", "mcp__.*", "claude")],
+    ".codex/hooks.json": [("PreToolUse", "Bash", "codex"), ("PreToolUse", "mcp__.*", "codex")],
+    ".cursor/hooks.json": [("beforeShellExecution", None, "cursor"), ("beforeMCPExecution", None, "cursor")],
+}
+for path, needs in required.items():
+    if not os.path.isfile(path):
+        print(f"{path}: missing; it must register {GUARD}")
+        continue
+    try:
+        data = json.load(open(path))
+    except ValueError as e:
+        print(f"{path}: not valid JSON ({e})")
+        continue
+    hooks = data.get("hooks", {}) if isinstance(data, dict) else {}
+    for event, matcher, adapter in needs:
+        commands = []
+        for entry in hooks.get(event, []) or []:
+            if not isinstance(entry, dict):
+                continue
+            if matcher is None:
+                commands.append(entry.get("command", ""))
+            elif entry.get("matcher") == matcher:
+                commands += [h.get("command", "") for h in entry.get("hooks", []) if isinstance(h, dict)]
+        if not any(GUARD in c and f"--adapter {adapter}" in c for c in commands):
+            where = f"{event} (matcher {matcher})" if matcher else event
+            print(f"{path}: {where} does not run {GUARD} --adapter {adapter}")
+    if path == ".claude/settings.json":
+        deny = (data.get("permissions") or {}).get("deny") or []
+        if MERGE_TOOL not in deny:
+            print(f"{path}: permissions.deny must include {MERGE_TOOL}")
+EOF
+while IFS= read -r line; do fail "$line"; done < "${TMPDIR:-/tmp}/check-references.$$"
+rm -f "${TMPDIR:-/tmp}/check-references.$$"
 
 if [ "$failures" -gt 0 ]; then
     echo "check-references: $failures problem(s). Fix the reference, or the file it points at, in this pull request." >&2
