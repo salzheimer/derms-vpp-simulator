@@ -15,11 +15,11 @@
 - [ ] Criterion: <!-- criterion -->
   - Evidence: <!-- tests, behavior, or other verification -->
 
-## Test-first
+## Test spec
 
-<!-- For a test-first step (.ai/rules/agent-workflow.md, "Test-first steps"). Otherwise write N/A. -->
+<!-- For a step with a test spec (.ai/rules/agent-workflow.md, "Test spec steps"). Otherwise write N/A. -->
 
-- **Tests-first commit:** <!-- SHA of the `<plan-step-id>: tests first` commit -->
+- **Spec commit:** <!-- SHA of the `<plan-step-id>: test spec` commit -->
 - **Stub list:** <!-- each type and signature the test author added, with its file -->
 - **Self-check:** <!-- reviewed tests unchanged since that commit; stub signatures unchanged; no NotImplementedException / NotImplementedError left -->
 
@@ -28,7 +28,7 @@
 <!-- Anything an agent decided that a human has not (.ai/rules/agent-workflow.md, "Review items"). Each item is also in the
      plan's review-items table, with its Decision (keep / change / open). Merging this pull request does not decide them.
      Write "None" under a heading that has no items. Keep one item per bullet, with the file path in backticks: a check
-     reads this section. In a test-first step, Contracts files whose stubs are in the "Stub list" above need no entry here. -->
+     reads this section. In a step with a test spec, Contracts files whose stubs are in the "Stub list" above need no entry here. -->
 
 ### Public surface
 

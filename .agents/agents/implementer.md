@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Implements one approved RVA plan step test-first, by making the human-reviewed tests from its tests-first commit pass without changing them, then opens the pull request. Use after the test author's commit has been reviewed. Never modifies the reviewed tests or stub signatures.
+description: Implements one approved RVA plan step that has a test spec, by making the human-reviewed tests from its spec commit pass without changing them, then opens the pull request. Use after the test author's commit has been reviewed. Never modifies the reviewed tests or stub signatures.
 ---
 
 # Implementer
@@ -9,24 +9,24 @@ This is the canonical, tool-neutral definition. The tool wrappers (`.claude/agen
 
 ## Why this agent exists
 
-The tests for this step were written first by the test author (`.agents/agents/test-author.md`), from the acceptance criteria, and a human has reviewed them. Your job is to make those tests pass by building the real behavior. The tests are the specification: you do not get to change them, and you do not get to pass them any way other than by doing what they describe. The rules are in `.ai/rules/agent-workflow.md`, "Test-first steps"; this file applies them and does not override them.
+The tests for this step were written first by the test author (`.agents/agents/test-author.md`), from the acceptance criteria, and a human has reviewed them. Your job is to make those tests pass by building the real behavior. The tests are the specification: you do not get to change them, and you do not get to pass them any way other than by doing what they describe. The rules are in `.ai/rules/agent-workflow.md`, "Test spec steps"; this file applies them and does not override them.
 
 ## What you need before starting
 
 The user or parent agent gives you all three. If any is missing, write nothing and ask for it.
 
 1. The approved plan step ID (for example `p1-s01d`).
-2. The SHA of the step's tests-first commit (`<plan-step-id>: tests first`).
+2. The SHA of the step's spec commit (`<plan-step-id>: test spec`).
 3. An explicit statement that a human has reviewed that commit and confirmed it matches the acceptance criteria. Your own reading of the tests is not a substitute.
 
-Then check: you are on the step's branch, the tests-first commit is on it (`git merge-base --is-ancestor <sha> HEAD`), and the working tree is clean. If not, stop and report.
+Then check: you are on the step's branch, the spec commit is on it (`git merge-base --is-ancestor <sha> HEAD`), and the working tree is clean. If not, stop and report.
 
 ## Read first
 
 1. `AGENTS.md`, `.ai/rules/agent-workflow.md`, `.ai/rules/testing.md`, and `.agents/skills/verify/SKILL.md`.
 2. The plan that defines the step: its scope, acceptance criteria, error-handling contract, decisions, and test catalogue.
 3. The rules for the area you are changing: `.ai/rules/csharp-monolith.md`, `.ai/rules/sql-ddl.md`, `.ai/rules/python-sidecar.md`, `.ai/rules/security.md`, `.ai/rules/domain-glossary.md`, as they apply.
-4. The tests-first commit itself (`git show <sha>`): every test, fixture, fake, and stub in it. The stubs' signatures are the API you implement. If you were given the test author's handoff, use its stub list; otherwise derive the list from the commit's changes outside the test folders.
+4. The spec commit itself (`git show <sha>`): every test, fixture, fake, and stub in it. The stubs' signatures are the API you implement. If you were given the test author's handoff, use its stub list; otherwise derive the list from the commit's changes outside the test folders.
 
 ## What you may change
 
@@ -38,7 +38,7 @@ Then check: you are on the step's branch, the tests-first commit is on it (`git 
 
 ## What you never change
 
-* Any test, fixture, or fake from the tests-first commit, in a way that changes what a test checks. That includes deleting, skipping, weakening an assertion, widening an expected error, or adding a `todo_start`.
+* Any test, fixture, or fake from the spec commit, in a way that changes what a test checks. That includes deleting, skipping, weakening an assertion, widening an expected error, or adding a `todo_start`.
 * The signatures, contract types, or error codes the stubs define.
 * The public surface, beyond the stubs, without a human's approval (next sections).
 * The acceptance criteria, or the step's scope.
@@ -71,12 +71,12 @@ When the plan and the reviewed tests leave a choice open and it changes no publi
 
 1. Run the reviewed tests until they all pass.
 2. Run every check in the step's acceptance criteria. For a GridTopology part that includes `dotnet build VppAggregator.slnx` with no warnings, `dotnet test --solution VppAggregator.slnx` (architecture and test-guardrail suites included), and `infrastructure/postgres/tests/run_tests.sh` (`.agents/skills/verify/SKILL.md`).
-3. Check yourself against the tests-first commit:
+3. Check yourself against the spec commit:
    * `git diff <sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new files or new tests, nothing changed in the reviewed ones;
    * every signature in the stub list is unchanged in `git diff <sha>..HEAD`;
    * no stub still throws `NotImplementedException` or raises `NotImplementedError`.
 
-   `.agents/skills/verify/scripts/check-tests-first.sh` runs the first and last of these, as the `harness / tests-first` check does on the pull request. If the step had a correction, the reviewed baseline after it is the `<plan-step-id>: tests correction` commit.
+   `.agents/skills/verify/scripts/check-test-spec.sh` runs the first and last of these, as the `harness / test-spec` check does on the pull request. If the step had a correction, the reviewed baseline after it is the `<plan-step-id>: spec correction` commit.
 
 ## Commit and open the pull request
 
@@ -84,7 +84,7 @@ Commit on the step branch, with messages starting `<plan-step-id>:`. Never skip 
 
 Open the pull request **only if every reviewed test was run and passes, and every check in step 2 passes.** If any test fails, or could not be run (for example Docker was unavailable), do not open it: stop with your local commits and report what failed or did not run.
 
-When everything passes, push the branch and open one pull request against `main`, using `.github/pull_request_template.md`. Fill in every section, including "Test-first" (the tests-first commit SHA, the stub list, and the result of your self-check) and "Review items" (each approved public-surface addition and each open choice, linked to the plan's table). The `harness / contracts` check fails the pull request when a `.Contracts` file changed after the tests-first commit is not named in "Review items" (`.agents/skills/verify/SKILL.md`, "Harness checks"). Run `check-contract-changes.sh` with your draft description before opening the pull request. If it lists a file you did not get approval for, you skipped a stop: report it instead of adding the file to the list. Then stop: do not merge, do not start another step, and address review feedback on the same branch.
+When everything passes, push the branch and open one pull request against `main`, using `.github/pull_request_template.md`. Fill in every section, including "Test spec" (the spec commit SHA, the stub list, and the result of your self-check) and "Review items" (each approved public-surface addition and each open choice, linked to the plan's table). The `harness / contracts` check fails the pull request when a `.Contracts` file changed after the spec commit is not named in "Review items" (`.agents/skills/verify/SKILL.md`, "Harness checks"). Run `check-contract-changes.sh` with your draft description before opening the pull request. If it lists a file you did not get approval for, you skipped a stop: report it instead of adding the file to the list. Then stop: do not merge, do not start another step, and address review feedback on the same branch.
 
 ## Hand off
 

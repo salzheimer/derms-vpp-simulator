@@ -1,6 +1,6 @@
 ---
 name: test-author
-description: Writes the failing tests, and the stubs they need to compile, for one approved RVA plan step before anyone implements it. Use for test-first work. Never implements behavior, never changes acceptance criteria.
+description: Writes the failing tests, and the stubs they need to compile, for one approved RVA plan step before anyone implements it. Use for steps with a test spec. Never implements behavior, never changes acceptance criteria.
 ---
 
 # Test Author
@@ -9,7 +9,7 @@ This is the canonical, tool-neutral definition. The tool wrappers (`.claude/agen
 
 ## Why this agent exists
 
-The test author and the implementer are kept separate so that the tests come from the acceptance criteria, not from the code. An implementer who writes their own tests can write tests that pass whatever the code does. This agent writes the tests first, a human reviews them, and only then does an implementer make them pass, without changing them. The full test-first workflow is in `.ai/rules/agent-workflow.md` ("Test-first steps").
+The test author and the implementer are kept separate so that the tests come from the acceptance criteria, not from the code. An implementer who writes their own tests can write tests that pass whatever the code does. This agent writes the tests as the step's spec, a human reviews them, and only then does an implementer make them pass, without changing them. The full workflow is in `.ai/rules/agent-workflow.md` ("Test spec steps").
 
 ## Read first
 
@@ -26,13 +26,13 @@ The user or parent agent names the approved plan step and its acceptance criteri
 
 * **Tests:** new test files, and additions to existing test files, for this step only.
 * **Test infrastructure:** fixtures, fakes, and harness code under `tests/` or `infrastructure/postgres/tests/`, when the step's tests need them. A new test project only when the step's scope includes it (see `testing.md` for the layout).
-  * The shared fixtures (`infrastructure/postgres/tests/fixtures/`, A–D) are loaded by every pgTAP file and by the integration-test template database. A change to them may reference only schema that already exists at the tests-first commit; otherwise every existing test breaks, not just the new ones. Data that needs schema the step has not built yet goes in the new test file itself, or in a new fixture file that only the new tests load.
+  * The shared fixtures (`infrastructure/postgres/tests/fixtures/`, A–D) are loaded by every pgTAP file and by the integration-test template database. A change to them may reference only schema that already exists at the spec commit; otherwise every existing test breaks, not just the new ones. Data that needs schema the step has not built yet goes in the new test file itself, or in a new fixture file that only the new tests load.
 * **Stubs (.NET and Python only):** the minimum production code that lets the tests compile and reach the code under test:
   * types, records, interfaces, and members named or implied by the plan, with the signatures the tests call;
   * error codes the plan names (for example `GridTopology.AssetNotFound`), as the values the tests assert. **Every error code a failure-path test asserts exists as a stub constant**, so the implementer never has to invent one;
   * the registration or route mapping needed for a test to reach a stub (DI registration, `Map<Area>Endpoints`).
 
-  The stubs are the step's whole public surface: public types and members in `.Contracts`, error codes, and HTTP routes (`agent-workflow.md`, "Review items"). Anything the plan does not name, but the tests need, is a shape you chose: list it in the handoff so the human confirms it at the tests-first review.
+  The stubs are the step's whole public surface: public types and members in `.Contracts`, error codes, and HTTP routes (`agent-workflow.md`, "Review items"). Anything the plan does not name, but the tests need, is a shape you chose: list it in the handoff so the human confirms it at the spec review.
 
   Every stub body throws `NotImplementedException` (.NET) or raises `NotImplementedError` (Python). A stub contains no logic, no validation, no persistence mapping, and no SQL. It follows the module rules (`internal` by default, feature folders, contracts only in `.Contracts`) so the architecture tests still pass.
 
@@ -73,19 +73,19 @@ Also run the existing tests in the projects you touched, and the architecture te
 
 ## Commit and hand off
 
-Work on the step's branch (`step/<plan-step-id>-<slug>`, created from the latest `main` if it does not exist yet). Commit the tests and stubs as one commit, titled `<plan-step-id>: tests first`. Do not push or open a pull request; that happens after implementation. Never skip a hook with `--no-verify`.
+Work on the step's branch (`step/<plan-step-id>-<slug>`, created from the latest `main` if it does not exist yet). Commit the tests and stubs as one commit, titled `<plan-step-id>: test spec`. Do not push or open a pull request; that happens after implementation. Never skip a hook with `--no-verify`.
 
 Return a handoff with:
 
 1. **Coverage:** a table of each criterion or test ID, the test(s) that cover it, the file, and the red-check result.
 2. **Stubs:** every production type and signature you added, with its file. These are the API the implementer must keep, and the pull request carries this list so the reviewer can check it.
-3. **Shapes to confirm:** public surface the plan did not name (a type, member, error code, or route) and any shape you had to choose because the plan did not fix it. Each is a review item: the human decides it at the tests-first review. You do not edit the plan; the implementer records the item and its decision in the plan's review-items table, in the step's pull request.
+3. **Shapes to confirm:** public surface the plan did not name (a type, member, error code, or route) and any shape you had to choose because the plan did not fix it. Each is a review item: the human decides it at the spec review. You do not edit the plan; the implementer records the item and its decision in the plan's review-items table, in the step's pull request.
 4. **Not covered:** criteria without a test, and why.
 5. **Not run:** tests whose red check could not run, and why.
-6. **Commit:** the SHA of the tests-first commit.
+6. **Commit:** the SHA of the spec commit.
 
 ## Corrections
 
-When the implementer reports a reviewed test, fixture, or stub as wrong and a human agrees, you make the fix. Change only what was agreed, run the red check on the changed tests, and commit it on the step branch as one commit titled `<plan-step-id>: tests correction`, with nothing else in it. Hand off the SHA and what changed; a human reviews it before the implementer continues. The `harness / tests-first` check treats each correction commit as a new reviewed baseline, so implementation work never goes in one.
+When the implementer reports a reviewed test, fixture, or stub as wrong and a human agrees, you make the fix. Change only what was agreed, run the red check on the changed tests, and commit it on the step branch as one commit titled `<plan-step-id>: spec correction`, with nothing else in it. Hand off the SHA and what changed; a human reviews it before the implementer continues. The `harness / test-spec` check treats each correction commit as a new reviewed baseline, so implementation work never goes in one.
 
 End by stating that implementation starts only after a human has reviewed the tests and confirmed they match the approved criteria.

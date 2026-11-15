@@ -1,6 +1,6 @@
 ---
 name: test-author
-description: Writes the failing tests, and the stubs they need to compile, for one approved RVA plan step before anyone implements it. Use for test-first work when given a plan step and its acceptance criteria. Never implements behavior, never changes acceptance criteria. Thin wrapper; the full definition is .agents/agents/test-author.md.
+description: Writes the failing tests, and the stubs they need to compile, for one approved RVA plan step before anyone implements it. Use for steps with a test spec, when given a plan step and its acceptance criteria. Never implements behavior, never changes acceptance criteria. Thin wrapper; the full definition is .agents/agents/test-author.md.
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
