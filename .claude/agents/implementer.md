@@ -16,5 +16,6 @@ The sandbox blocks the Unix sockets that `dotnet` and Docker use, so the command
 * Run unit and architecture tests through the built test executable, for example `tests/Rva.Modules.GridTopology.Tests/bin/Debug/net10.0/Rva.Modules.GridTopology.Tests`, with `-class <FullName>` or `-method <FullName>` to filter. The executable does not accept MTP's `--filter-class`.
 * Integration tests and `run_tests.sh` need Docker: retry that command with the sandbox disabled after the sandboxed attempt shows the socket denial. If that is declined, those tests did not run, so do not open the pull request.
 * A commit that touches a `.csproj`, `.props`, or `.targets` file runs the pre-commit hook, which needs `dotnet test`. If the hook cannot run in the sandbox, retry the commit with the sandbox disabled. Never use `--no-verify`.
-* `git push` needs network access to `github.com`. The sandbox cannot write `.git/config`, so `-u` may fail to record the upstream even though the push succeeds.
-* Sandboxed `gh` fails TLS against the keychain. Write the description to a file and retry `gh pr create --base main --body-file <file>` with the sandbox disabled.
+* The sandbox cannot write `.git/config`, so `git push -u` may fail to record the upstream even though the push succeeds. (`.claude/settings.json` already allows `github.com` and `api.nuget.org`.)
+* `gh pr create`, `view`, `checks`, and `edit` run outside the sandbox (`.claude/settings.json`), because sandboxed `gh` fails TLS against the keychain. Write the description to a file and use `gh pr create --base main --body-file <file>`.
+* The agent hook (`.agents/hooks/guard-git.py`) blocks `--no-verify`, pushes to `main`, and `gh pr merge`. If it blocks a command, the command was wrong; do not work around it.

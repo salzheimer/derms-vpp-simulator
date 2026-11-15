@@ -30,6 +30,7 @@ Canonical build, test, and lint commands for this repo. Any AI tool or human sho
 | Harness references | `.agents/skills/verify/scripts/check-references.sh` | bash, git | Any change to `AGENTS.md`, `.ai/rules/`, `.agents/`, a tool adapter, or a file they name (moving or renaming one) |
 | Contract changes | `.agents/skills/verify/scripts/check-contract-changes.sh --body-file <pr-description.md>` (optional `--base <ref>`, `--head <ref>`) | bash, git, perl | Before opening a pull request that changes a `.Contracts` project, an error code, or a route |
 | Test spec | `.agents/skills/verify/scripts/check-test-spec.sh` (optional `--base <ref>`, `--head <ref>`) | bash, git | Before opening the pull request for a step with a test spec |
+| Agent hooks | `.agents/hooks/tests/test-guard-git.sh` | bash, git, python3 | Any change to `.agents/hooks/` or a hook adapter |
 
 CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and tests, images and health checks), `db-tests` (`run_tests.sh`), `test-guardrail`, and `harness` (`.github/workflows/harness.yml`: the harness checks below).
 
@@ -38,7 +39,8 @@ CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and test
 `check-references.sh` (the `references` job in the `harness` workflow) fails a pull request when:
 
 * a repo path named in `AGENTS.md`, `CLAUDE.md`, `.ai/rules/`, `.agents/`, `.claude/`, `.codex/`, `.cursor/rules/`, or `.github/*.md` does not exist. That covers backticked paths, `@`-references, and relative Markdown links. A backticked token counts as a path only if it starts with a top-level repo entry and holds no placeholder (`<Area>`), glob, or command syntax; build output (`/bin/`, `/obj/`) is skipped. Plans (`.ai/plans/`) are not checked, because they name files that past steps removed and future steps will add;
-* a `.cursor/rules/*.mdc` body is anything other than one line starting `Follow @.ai/rules/<same name>.md, `, pointing at a rule that exists.
+* a `.cursor/rules/*.mdc` body is anything other than one line starting `Follow @.ai/rules/<same name>.md, `, pointing at a rule that exists;
+* a hook `command` in `.claude/settings.json`, `.codex/hooks.json`, or `.cursor/hooks.json` does not run a script under `.agents/hooks/`, or runs one that does not exist.
 
 `check-contract-changes.sh` (the `contracts` job, pull requests only; it reruns when the description is edited) reports the pull request's public-surface changes (`.ai/rules/agent-workflow.md`, "Review items") in the job summary, and fails when a changed `.Contracts` file is not named:
 
@@ -48,6 +50,8 @@ CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and test
 * Naming a file records the item for review; it does not decide it. The decision goes in the plan's review-items table.
 
 When it fails, the summary lists each Contracts file marked **no**. Add it to "Review items" (after the human has approved the addition), and the job reruns when the description is saved.
+
+`test-guard-git.sh` (the `hooks` job) runs every case for the agent hook `.agents/hooks/guard-git.py` in each tool's input shape: the recorded samples in `.agents/hooks/tests/samples/` (Claude Code, Codex, Cursor). It checks that each blocked command exits 2 and each allowed one exits 0. Add a case there whenever the hook changes; a new tool gets a sample and an adapter, never its own copy of the logic.
 
 `check-test-spec.sh` (the `test-spec` job, `step/*` pull requests only) enforces the test spec rules (`.ai/rules/agent-workflow.md`, "Test spec steps"):
 

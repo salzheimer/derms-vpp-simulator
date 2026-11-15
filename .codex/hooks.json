@@ -1,0 +1,18 @@
+{
+  "description": "Thin adapter: runs the canonical agent hooks in .agents/hooks/ (see AGENTS.md). Put hook logic there, not here.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.agents/hooks/guard-git.py\" --adapter codex",
+            "timeout": 10,
+            "statusMessage": "Checking git command"
+          }
+        ]
+      }
+    ]
+  }
+}

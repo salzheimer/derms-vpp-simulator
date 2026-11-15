@@ -1,1 +1,27 @@
-{}
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.agents/hooks/guard-git.py\" --adapter claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "sandbox": {
+    "excludedCommands": [
+      "gh pr create *",
+      "gh pr view *",
+      "gh pr checks *",
+      "gh pr edit *"
+    ],
+    "network": {
+      "allowedDomains": ["github.com", "api.nuget.org"]
+    }
+  }
+}

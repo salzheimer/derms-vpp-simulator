@@ -37,7 +37,7 @@ node_modules/
 # ==============================================================================
 # 🤖 AI Assistant Agnostic Configuration & Exclusions
 # Shared agent instructions are COMMITTED: AGENTS.md, CLAUDE.md, .ai/, .agents/,
-# .claude/agents/, .claude/skills/, .claude/settings.json, .codex/, .cursor/rules/,
+# .claude/agents/, .claude/skills/, .claude/settings.json, .codex/, .cursor/rules/, .cursor/hooks.json,
 # .github/copilot-instructions.md, .github/instructions/, .github/prompts/, .mcp.json.
 # Only personal, machine-local, session, and cache files are ignored below.
 # ==============================================================================
@@ -55,9 +55,10 @@ node_modules/
 CLAUDE.local.md
 
 # -- Cursor --
-# Shared rules live in .cursor/rules/ (committed); personal state lives in the app, not the repo
+# Shared rules (.cursor/rules/) and the hook adapter (.cursor/hooks.json) are committed; personal state lives in the app
 .cursor/*
 !.cursor/rules/
+!.cursor/hooks.json
 !.cursor/mcp.json
 
 # -- GitHub Copilot / VS Code --

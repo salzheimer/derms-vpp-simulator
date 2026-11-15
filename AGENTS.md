@@ -25,8 +25,8 @@ Full detail: `.ai/rules/csharp-monolith.md` and `.ai/rules/python-sidecar.md`.
 ## How the AI layer is organized
 
 - **`.ai/` is what agents must know:** rules (`.ai/rules/`, constraints that always hold for an area) and plans (`.ai/plans/`, the roadmap, steps, and their status). Every "never" and "must" lives in a rule.
-- **`.agents/` is what agents can do:** agent definitions (`.agents/agents/`) and skills (`.agents/skills/`, procedures loaded for a task, with any scripts they run). A skill links to the rules it applies and does not repeat them.
-- **Tool folders hold thin adapters only:** `.claude/`, `.codex/`, `.cursor/rules/`, and `.github/copilot-instructions.md` point to the canonical files above and carry only tool-specific notes. Never put project guidance in an adapter; add it to the canonical file.
+- **`.agents/` is what agents can do:** agent definitions (`.agents/agents/`), skills (`.agents/skills/`, procedures loaded for a task, with any scripts they run), and agent hooks (`.agents/hooks/`, scripts every agent tool runs before a shell command). A skill links to the rules it applies and does not repeat them.
+- **Tool folders hold thin adapters only:** `.claude/`, `.codex/`, `.cursor/rules/`, and `.github/copilot-instructions.md` point to the canonical files above and carry only tool-specific notes. The hook adapters (`.claude/settings.json`, `.codex/hooks.json`, `.cursor/hooks.json`) only register scripts from `.agents/hooks/`. Never put project guidance in an adapter; add it to the canonical file.
 
 ## Finding the next piece of work
 
