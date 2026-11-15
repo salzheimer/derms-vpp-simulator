@@ -6,6 +6,8 @@
 #      steps will add.
 #   2. Every Cursor rule (.cursor/rules/*.mdc) is a thin adapter: frontmatter, then exactly one body line,
 #      "Follow @.ai/rules/<same name>.md, ...", pointing at a rule that exists.
+#   3. Every hook adapter (.claude/settings.json, .codex/hooks.json, .cursor/hooks.json) is thin: each hook "command"
+#      runs a script under .agents/hooks/ that exists.
 #
 # A backticked token counts as a path only if it starts with a top-level repo entry (see ROOTS) and holds no
 # placeholder or command syntax (spaces, <, >, *, {, }, $, |). Build output (/bin/, /obj/) is skipped, since a
@@ -91,6 +93,23 @@ for mdc in .cursor/rules/*.mdc; do
     elif [ ! -f ".ai/rules/$name.md" ]; then
         fail "$mdc: points at .ai/rules/$name.md, which does not exist"
     fi
+done
+
+echo "check-references: hook adapters run canonical hooks"
+# Each "command" in a hook adapter must run a script under .agents/hooks/ that exists (AI_HARNESS_PLAN.md, ai-07).
+for adapter in .claude/settings.json .codex/hooks.json .cursor/hooks.json; do
+    [ -f "$adapter" ] || continue
+    grep -oE '"command"[[:space:]]*:[[:space:]]*"([^"\\]|\\.)*"' "$adapter" > "${TMPDIR:-/tmp}/check-references.$$"
+    while IFS= read -r command; do
+        scripts=$(printf '%s' "$command" | grep -oE '\.agents/hooks/[A-Za-z0-9_./-]+')
+        if [ -z "$scripts" ]; then
+            fail "$adapter: a hook command does not run a script under .agents/hooks/: $command"
+        fi
+        for s in $scripts; do
+            [ -f "$s" ] || fail "$adapter: runs $s, which does not exist"
+        done
+    done < "${TMPDIR:-/tmp}/check-references.$$"
+    rm -f "${TMPDIR:-/tmp}/check-references.$$"
 done
 
 if [ "$failures" -gt 0 ]; then

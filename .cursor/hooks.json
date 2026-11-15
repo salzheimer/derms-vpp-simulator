@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "python3 .agents/hooks/guard-git.py --adapter cursor",
+        "timeout": 10
+      }
+    ]
+  }
+}

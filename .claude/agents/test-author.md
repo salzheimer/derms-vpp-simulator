@@ -17,3 +17,4 @@ The sandbox blocks the Unix sockets that `dotnet` and Docker use, so the command
 * Integration tests and `run_tests.sh` need Docker: retry that command with the sandbox disabled after the sandboxed attempt shows the socket denial. If that is declined, list those tests under "Not run" in the handoff.
 * The sandbox cannot write `.git/config`, so creating a branch that tracks `origin/main` fails. Create the step branch with `git switch --no-track -c step/<plan-step-id>-<slug> origin/main`.
 * A commit that touches a `.csproj`, `.props`, or `.targets` file (a new test project, for example) runs the pre-commit hook, which needs `dotnet test`. If the hook cannot run in the sandbox, retry the commit with the sandbox disabled. Never use `--no-verify`.
+* The agent hook (`.agents/hooks/guard-git.py`) blocks `--no-verify` and pushes to `main`. If it blocks a command, the command was wrong; do not work around it.
