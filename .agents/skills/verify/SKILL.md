@@ -31,6 +31,7 @@ Canonical build, test, and lint commands for this repo. Any AI tool or human sho
 | Contract changes | `.agents/skills/verify/scripts/check-contract-changes.sh --body-file <pr-description.md>` (optional `--base <ref>`, `--head <ref>`) | bash, git, perl | Before opening a pull request that changes a `.Contracts` project, an error code, or a route |
 | Test spec | `.agents/skills/verify/scripts/check-test-spec.sh` (optional `--base <ref>`, `--head <ref>`) | bash, git | Before opening the pull request for a step with a test spec |
 | Agent hooks | `.agents/hooks/tests/test-guard-git.sh` | bash, git, python3 | Any change to `.agents/hooks/` or a hook adapter |
+| run-step scripts | `.agents/skills/run-step/scripts/test-run-step.sh` | bash, git, python3 | Any change to `.agents/skills/run-step/` |
 
 CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and tests, images and health checks), `db-tests` (`run_tests.sh`), `test-guardrail`, and `harness` (`.github/workflows/harness.yml`: the harness checks below).
 

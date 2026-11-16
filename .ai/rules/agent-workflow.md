@@ -22,6 +22,8 @@ A step can have a test spec, with the tests and the implementation written by di
    * if a reviewed test or stub looks wrong, stops and reports it. The fix goes back through the test author and a human, in a new commit titled `<plan-step-id>: spec correction`; the implementer does not make it. A human reviews that commit as they reviewed the spec commit, and confirms it before the implementer continues.
 4. **Pull request.** The implementer opens the pull request only when every test from the spec commit was run and passes, the step's other checks pass, and no stub still throws `NotImplementedException` or raises `NotImplementedError`. If any test fails or could not run, it stops with local commits and reports instead.
 
+The `run-step` skill (`.agents/skills/run-step/SKILL.md`) runs these steps in order for one approved step: a preflight (dependencies done, no undecided review items they hold, clean tree, branch), the test author, a hard stop until a human confirms the spec review, then the implementer. It never merges.
+
 ### What the step's plan gives the agents
 
 Plans differ in layout and numbering, so the agents look for each input by what it is, not by a section number. The plan for `p1-s01` (`.ai/plans/P1_S01_GRID_TOPOLOGY_PLAN.md`) is one example of where each lives.
