@@ -102,6 +102,18 @@ for tool in claude codex cursor; do
     [ $? -eq 2 ] && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL [$tool] --adapter claude should block"; }
 done
 
+# MCP tool calls that merge a pull request are blocked, in each tool's MCP input shape; other MCP tools are allowed.
+mcp() {  # mcp <expected exit> <json>
+    printf '%s' "$2" | "$hook" 2>/dev/null
+    [ $? -eq "$1" ] && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL expected exit $1 for MCP input: $2"; }
+}
+mcp 2 '{"hook_event_name":"PreToolUse","tool_name":"mcp__claude_ai_github__merge_pull_request","tool_input":{"owner":"o","repo":"r","pullNumber":1}}'
+mcp 2 '{"hook_event_name":"PreToolUse","tool_name":"mcp__github__merge_pull_request","tool_input":{"pull_number":1}}'
+mcp 2 '{"hook_event_name":"beforeMCPExecution","cursor_version":"2.0.0","tool_name":"merge_pull_request","tool_input":"{}","command":"npx github-mcp"}'
+mcp 0 '{"hook_event_name":"PreToolUse","tool_name":"mcp__claude_ai_github__create_pull_request","tool_input":{"title":"x"}}'
+mcp 0 '{"hook_event_name":"PreToolUse","tool_name":"mcp__claude_ai_github__pull_request_read","tool_input":{}}'
+mcp 0 '{"hook_event_name":"beforeMCPExecution","cursor_version":"2.0.0","tool_name":"list_issues","tool_input":"{}","command":"git push origin main"}'
+
 # Unreadable or non-shell input is allowed.
 for input in 'not json' '[]' '{"tool_name":"Read","tool_input":{"file_path":"x"}}'; do
     printf '%s' "$input" | "$hook" 2>/dev/null

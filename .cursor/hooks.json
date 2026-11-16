@@ -6,6 +6,12 @@
         "command": "python3 .agents/hooks/guard-git.py --adapter cursor",
         "timeout": 10
       }
+    ],
+    "beforeMCPExecution": [
+      {
+        "command": "python3 .agents/hooks/guard-git.py --adapter cursor",
+        "timeout": 10
+      }
     ]
   }
 }
