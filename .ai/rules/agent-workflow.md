@@ -40,7 +40,7 @@ Plans differ in layout and numbering, so the agents look for each input by what 
 
 A plan may keep an input in a document it links, or under its own heading: `P1_S00F_DDL_TESTS_PLAN.md` takes its test IDs (GT-01.., SIM-01..) from `docs/architecture/model-validation-scenarios.md` and its checks from "Verification". Follow the plan's links before deciding an input is missing. When a plan has no error-handling contract or test catalogue, the acceptance criteria are the only source: write tests from them, and list in the handoff what a contract or catalogue would have settled. When an input the step needs is missing or ambiguous, stop and report it; never fill the gap with a choice of your own.
 
-The pull request names the spec commit and carries the stub list from the test author's handoff. The reviewer checks both rules:
+The pull request names the spec commit and carries the stub list from the test author's handoff. The reviewer checks both rules; the reviewer agent (`.agents/agents/reviewer.md`) prepares that check for the human:
 
 * **Tests unchanged:** `git diff <spec-sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new tests, or corrections approved through step 3.
 * **Signatures unchanged:** the stubs live in `src/`, where the implementer legitimately changes the bodies, so a path diff cannot catch this. Compare each signature in the stub list against `git diff <spec-sha>..HEAD` for its file.
@@ -71,7 +71,7 @@ A review item is anything an agent decided that a human has not: a **departure**
 
 ## Pre-review Checklist
 
-Use this checklist for each pull request. The shared items stay the same; the plan-step acceptance criteria are specific to the change and belong in the plan and pull request description.
+Use this checklist for each pull request. The reviewer agent (`.agents/agents/reviewer.md`) goes through it and reports its findings for the human; it is advisory, never approves or merges, and its report is not the human review. The shared items stay the same; the plan-step acceptance criteria are specific to the change and belong in the plan and pull request description.
 
 ### Every pull request
 

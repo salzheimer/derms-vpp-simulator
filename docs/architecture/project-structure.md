@@ -12,7 +12,7 @@ vpp-aggregator/
 │   ├── rules/                       agent-workflow, csharp-monolith, sql-ddl, testing, python-sidecar, security, domain-glossary
 │   └── plans/                       MASTER_PLAN, PHASE_1_PLAN, step plans, AI_HARNESS_PLAN
 ├── .agents/
-│   ├── agents/                      canonical agent definitions (test-author, implementer)
+│   ├── agents/                      canonical agent definitions (test-author, implementer, reviewer)
 │   └── skills/                      canonical agent skills (verify: build, test, and lint commands; csharp-module-scaffolder)
 ├── .claude/, .codex/                thin wrappers that point to .agents/
 ├── .cursor/rules/                   thin wrappers that point to .ai/rules/
