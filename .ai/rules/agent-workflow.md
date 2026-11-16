@@ -22,6 +22,22 @@ A step can have a test spec, with the tests and the implementation written by di
    * if a reviewed test or stub looks wrong, stops and reports it. The fix goes back through the test author and a human, in a new commit titled `<plan-step-id>: spec correction`; the implementer does not make it. A human reviews that commit as they reviewed the spec commit, and confirms it before the implementer continues.
 4. **Pull request.** The implementer opens the pull request only when every test from the spec commit was run and passes, the step's other checks pass, and no stub still throws `NotImplementedException` or raises `NotImplementedError`. If any test fails or could not run, it stops with local commits and reports instead.
 
+### What the step's plan gives the agents
+
+Plans differ in layout and numbering, so the agents look for each input by what it is, not by a section number. The plan for `p1-s01` (`.ai/plans/P1_S01_GRID_TOPOLOGY_PLAN.md`) is one example of where each lives.
+
+| Input | What it is | Where `P1_S01_GRID_TOPOLOGY_PLAN.md` has it |
+|---|---|---|
+| Scope | What the step builds and what it leaves out | "Scope", and the step's row in "Parts" |
+| Acceptance criteria | The checks that say the step is done | The step's row in "Parts" |
+| Decisions | Fixed choices the tests and code must follow | "Decisions", by ID |
+| Public surface | Types, members, error codes (`<Module>.<Code>`), and routes the step adds | "Project structure" and "Error-handling contract" |
+| Error-handling contract | How expected failures are reported (kind, code, HTTP status), how unexpected failures behave, and what every failure test asserts | "Error-handling contract": the `Error.Kind` table, the rules U1–U5, and the fault injections FI-1..FI-8 |
+| Test catalogue | The step's test IDs, what each checks, and whether it is a success, expected-failure, or unexpected-failure case | "Test catalogue", the step's subsection (Kind column: S, EF, UF) |
+| Review items | Departures and open choices, with their decisions | Under "Parts" ("Departures in `p1-s01c`, for review", "Choices in `p1-s01d`, for review") |
+
+A plan may keep an input in a document it links, or under its own heading: `P1_S00F_DDL_TESTS_PLAN.md` takes its test IDs (GT-01.., SIM-01..) from `docs/architecture/model-validation-scenarios.md` and its checks from "Verification". Follow the plan's links before deciding an input is missing. When a plan has no error-handling contract or test catalogue, the acceptance criteria are the only source: write tests from them, and list in the handoff what a contract or catalogue would have settled. When an input the step needs is missing or ambiguous, stop and report it; never fill the gap with a choice of your own.
+
 The pull request names the spec commit and carries the stub list from the test author's handoff. The reviewer checks both rules:
 
 * **Tests unchanged:** `git diff <spec-sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new tests, or corrections approved through step 3.
