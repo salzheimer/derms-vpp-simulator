@@ -8,6 +8,8 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd)
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/run-step.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
+# Throwaway repos need a commit identity; CI runners have none configured.
+export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.invalid GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.invalid
 pass=0
 fail=0
 
