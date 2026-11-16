@@ -14,8 +14,8 @@ The test author and the implementer are kept separate so that the tests come fro
 ## Read first
 
 1. `AGENTS.md`, `.ai/rules/agent-workflow.md`, and `.ai/rules/testing.md`.
-2. The plan that defines the step, including its error-handling contract and test catalogue where it has one (for example `.ai/plans/P1_S01_GRID_TOPOLOGY_PLAN.md` sections 4 and 6).
-3. The rules for the area under test: `.ai/rules/csharp-monolith.md` for module code, `.ai/rules/sql-ddl.md` (section 7 in particular) for PostgreSQL, `.ai/rules/python-sidecar.md` for the sidecar, `.ai/rules/security.md` and `.ai/rules/domain-glossary.md` where they apply.
+2. The plan that defines the step. Find each input by what it is: scope, acceptance criteria, decisions, public surface, error-handling contract, test catalogue, review items (`agent-workflow.md`, "What the step's plan gives the agents"). Plans number their sections differently; never rely on a section number.
+3. The rules for the area under test: `.ai/rules/csharp-monolith.md` for module code, `.ai/rules/sql-ddl.md` (its "Tests" section in particular) for PostgreSQL, `.ai/rules/python-sidecar.md` for the sidecar, `.ai/rules/security.md` and `.ai/rules/domain-glossary.md` where they apply.
 4. The existing tests, fixtures, and fakes nearest to the code under test. Follow their patterns.
 
 ## What you need before starting
@@ -26,10 +26,10 @@ The user or parent agent names the approved plan step and its acceptance criteri
 
 * **Tests:** new test files, and additions to existing test files, for this step only.
 * **Test infrastructure:** fixtures, fakes, and harness code under `tests/` or `infrastructure/postgres/tests/`, when the step's tests need them. A new test project only when the step's scope includes it (see `testing.md` for the layout).
-  * The shared fixtures (`infrastructure/postgres/tests/fixtures/`, A–D) are loaded by every pgTAP file and by the integration-test template database. A change to them may reference only schema that already exists at the spec commit; otherwise every existing test breaks, not just the new ones. Data that needs schema the step has not built yet goes in the new test file itself, or in a new fixture file that only the new tests load.
+  * The shared fixtures (`infrastructure/postgres/tests/fixtures/`, described in `sql-ddl.md`, "Tests") are loaded by every pgTAP file and by the integration-test template database. A change to them may reference only schema that already exists at the spec commit; otherwise every existing test breaks, not just the new ones. Data that needs schema the step has not built yet goes in the new test file itself, or in a new fixture file that only the new tests load.
 * **Stubs (.NET and Python only):** the minimum production code that lets the tests compile and reach the code under test:
   * types, records, interfaces, and members named or implied by the plan, with the signatures the tests call;
-  * error codes the plan names (for example `GridTopology.AssetNotFound`), as the values the tests assert. **Every error code a failure-path test asserts exists as a stub constant**, so the implementer never has to invent one;
+  * error codes the plan names, in the form `<Module>.<Code>` (for example `GridTopology.AssetNotFound` in the GridTopology plan), as the values the tests assert. **Every error code a failure-path test asserts exists as a stub constant**, so the implementer never has to invent one;
   * the registration or route mapping needed for a test to reach a stub (DI registration, `Map<Area>Endpoints`).
 
   The stubs are the step's whole public surface: public types and members in `.Contracts`, error codes, and HTTP routes (`agent-workflow.md`, "Review items"). Anything the plan does not name, but the tests need, is a shape you chose: list it in the handoff so the human confirms it at the spec review.
@@ -47,13 +47,13 @@ The user or parent agent names the approved plan step and its acceptance criteri
 
 ## Writing the tests
 
-1. **Map every criterion.** List each acceptance criterion and the plan's test IDs for the step (for example `D-01`..`D-22`). Each one gets at least one test, named or labelled with its ID so a failure maps back to it. A criterion you cannot test goes in the handoff with the reason; do not drop it silently.
+1. **Map every criterion.** List each acceptance criterion and the plan's test IDs for the step (for example `D-01`..`D-22` for `p1-s01d` in the GridTopology plan). If the plan has no test IDs, label each test with the criterion it covers. Each one gets at least one test, named or labelled with its ID so a failure maps back to it. A criterion you cannot test goes in the handoff with the reason; do not drop it silently.
 2. **Test behavior, not implementation.** Assert through public contracts, endpoints, and the module's stable seams (handlers and domain types reached through `InternalsVisibleTo`), not private details the implementer should be free to choose.
-3. **Write the failure paths, not just the happy path.** Where the plan has an error-handling contract, cover every expected-failure (EF) and unexpected-failure (UF) case it lists for the step. Without these tests the implementer has no reason to write the handlers.
+3. **Write the failure paths, not just the happy path.** Where the plan has an error-handling contract, cover every expected and unexpected failure case it lists for the step (in the GridTopology plan, test catalogue rows of kind EF and UF, with the U1–U5 assertions). Without these tests the implementer has no reason to write the handlers.
 4. **Pin the cause of every failure.** A failure-path test asserts the specific outcome: the `Error.Kind` and code, the HTTP status and problem `code`, the exception type, or the SQLSTATE. Asserting only "it failed" or "it returned 500" lets the test pass for the wrong reason, including against a stub. For unexpected-failure tests, also assert that the injected fault was actually hit (the interceptor fired, the logged exception is the injected one, not `NotImplementedException`).
 5. **Follow the stack's rules.**
    * .NET: xUnit v3 on MTP, xUnit `Assert` only, hand-written fakes, `TestContext.Current.CancellationToken`, `TaskCompletionSource` with `WaitAsync` rather than delays (`testing.md`).
-   * PostgreSQL: pgTAP, one file per validation scenario, descriptions starting with the scenario ID, shared fixtures A–D, rejections by SQLSTATE (`sql-ddl.md` section 7). Use `todo_start`/`todo_end` only for a gap the step explicitly leaves open, never for something the step is meant to deliver.
+   * PostgreSQL: pgTAP, one file per validation scenario, descriptions starting with the scenario ID, the shared fixtures, rejections by SQLSTATE (`sql-ddl.md`, "Tests"). Use `todo_start`/`todo_end` only for a gap the step explicitly leaves open, never for something the step is meant to deliver.
    * Python: pytest, with `pytest-asyncio` for async code. The sidecar has no test tooling yet; setting it up is in scope only if the step says so.
 6. **Respect the boundaries in the tests themselves.** Modules reach other modules only through `.Contracts`; the simulator is reached only over HTTP and MQTT; the Python sidecar is advisory and has no dispatch path; dispatch tests check substation-level balance, not just fleet totals; audit and history are append-only.
 

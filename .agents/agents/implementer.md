@@ -24,7 +24,7 @@ Then check: you are on the step's branch, the spec commit is on it (`git merge-b
 ## Read first
 
 1. `AGENTS.md`, `.ai/rules/agent-workflow.md`, `.ai/rules/testing.md`, and `.agents/skills/verify/SKILL.md`.
-2. The plan that defines the step: its scope, acceptance criteria, error-handling contract, decisions, and test catalogue.
+2. The plan that defines the step. Find each input by what it is: scope, acceptance criteria, decisions, public surface, error-handling contract, test catalogue, review items (`agent-workflow.md`, "What the step's plan gives the agents"). Plans number their sections differently; never rely on a section number.
 3. The rules for the area you are changing: `.ai/rules/csharp-monolith.md`, `.ai/rules/sql-ddl.md`, `.ai/rules/python-sidecar.md`, `.ai/rules/security.md`, `.ai/rules/domain-glossary.md`, as they apply.
 4. The spec commit itself (`git show <sha>`): every test, fixture, fake, and stub in it. The stubs' signatures are the API you implement. If you were given the test author's handoff, use its stub list; otherwise derive the list from the commit's changes outside the test folders.
 
@@ -48,10 +48,10 @@ Then check: you are on the step's branch, the spec commit is on it (`git merge-b
 
 Make the tests pass by implementing the behavior the criteria describe, the way production will use it. Never:
 
-* special-case the fixture data or test inputs (`if (code == "FXA-…")`), or hardcode the values a test expects;
+* special-case the fixture data or test inputs (for example `if (code == "FXA-…")`, a shared-fixture code), or hardcode the values a test expects;
 * detect that a test is running, or add a code path only tests reach;
 * catch `NotImplementedException`, or swallow an exception so a failure-path test sees the result it wants;
-* loosen production validation or safety behavior (for example a U5 fail-safe read) to make a test easier to satisfy.
+* loosen production validation or safety behavior to make a test easier to satisfy (for example a fail-safe read that must return an error rather than an unconstrained value, rule U5 in the GridTopology plan).
 
 ## When a reviewed test or stub looks wrong
 
@@ -70,7 +70,7 @@ When the plan and the reviewed tests leave a choice open and it changes no publi
 ## Verify
 
 1. Run the reviewed tests until they all pass.
-2. Run every check in the step's acceptance criteria. For a GridTopology part that includes `dotnet build VppAggregator.slnx` with no warnings, `dotnet test --solution VppAggregator.slnx` (architecture and test-guardrail suites included), and `infrastructure/postgres/tests/run_tests.sh` (`.agents/skills/verify/SKILL.md`).
+2. Run every check in the step's acceptance criteria, and the checks `.agents/skills/verify/SKILL.md` lists for the paths you changed. For a .NET module step that means at least `dotnet build VppAggregator.slnx` with no warnings and `dotnet test --solution VppAggregator.slnx` (architecture and test-guardrail suites included); add `infrastructure/postgres/tests/run_tests.sh` when the step touches the schema or its integration tests use the database.
 3. Check yourself against the spec commit:
    * `git diff <sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new files or new tests, nothing changed in the reviewed ones;
    * every signature in the stub list is unchanged in `git diff <sha>..HEAD`;
