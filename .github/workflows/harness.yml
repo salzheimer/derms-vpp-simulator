@@ -3,6 +3,7 @@
 # contracts (ai-05): every changed .Contracts file is named in the pull request's "Review items" section.
 # test-spec (ai-06): on step/* pull requests, reviewed tests are unchanged and no stub is left under src/.
 # hooks (ai-07): the agent hook blocks and allows the right commands in every tool's input shape.
+# run-step (ai-10): the run-step preflight and handoff scripts, on fixture plans.
 # No paths filter, for the same reason as test-guardrail.yml: a required check that is filtered out never reports.
 # "edited" reruns the checks when the description changes, since the contracts job reads it.
 name: harness
@@ -30,6 +31,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Test the agent hooks
         run: .agents/hooks/tests/test-guard-git.sh
+
+  run-step:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Test the run-step scripts
+        run: .agents/skills/run-step/scripts/test-run-step.sh
 
   contracts:
     # Reads the pull request description, so it runs only for pull requests.
