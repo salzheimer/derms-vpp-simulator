@@ -59,6 +59,13 @@ def is_contracts(path):
 HARNESS_WF = ".github/workflows/harness.yml"
 
 
+def is_instruction(path):
+    """The files check-references.sh reads (its list_files)."""
+    return path in ("AGENTS.md", "CLAUDE.md") or under(path, ".ai/rules/", ".agents/", ".claude/", ".codex/",
+                                                       ".cursor/rules/") \
+        or (path.startswith(".github/") and path.count("/") == 1 and path.endswith(".md"))
+
+
 class Check:
     def __init__(self, cid, name, command, selects, why, needs=(), timeout=600, after=None, unavailable=None,
                  always=False):
@@ -211,6 +218,7 @@ def main(argv):
         if c.always or hits:
             selected[c.id] = hits
     covered = {p for c in CHECKS if c.selects and not c.always for p in paths if c.selects(p)}
+    covered |= {p for p in paths if is_instruction(p)}
     uncovered = [p for p in paths if p not in covered]
 
     logdir = os.path.join(tempfile.gettempdir(), "select-checks")
@@ -269,7 +277,8 @@ def main(argv):
         for c in rest:
             print(f"* {c.name}: selected by {c.why}")
     if uncovered:
-        print("\nNo check covers these changed paths beyond the reference check; review them by hand:\n")
+        print("\nNo check reads these changed paths (the reference check reads only the instruction files); "
+              "review them by hand:\n")
         for p in uncovered:
             print(f"* `{p}`")
     print("\nCI still runs `ci`, `harness`, and `test-guardrail` on every pull request; `db-tests` runs on its "

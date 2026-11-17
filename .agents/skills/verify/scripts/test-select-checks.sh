@@ -102,6 +102,9 @@ r=$(repo uncovered); change "$r" compose infrastructure/docker/docker-compose.ym
 out=$(cd "$r" && python3 "$S" $D)
 printf '%s\n' "$out" | grep -q '^\* `infrastructure/docker/docker-compose.yml`' && pass=$((pass + 1)) \
     || { fail=$((fail + 1)); echo "FAIL uncovered path not listed"; printf '%s\n' "$out" | sed 's/^/    /'; }
+r=$(repo instructions); change "$r" rule .ai/rules/x.md .github/pull_request_template.md
+out=$(cd "$r" && python3 "$S" $D)
+printf '%s\n' "$out" | grep -q 'review them by hand' && { fail=$((fail + 1)); echo "FAIL instruction files listed as uncovered"; } || pass=$((pass + 1))
 
 r=$(repo worktree); echo y >> "$r/README.md"; mkdir -p "$r/infrastructure/postgres/x"; echo y > "$r/infrastructure/postgres/x/new.sql"
 expect "committed range ignores the worktree" "$r" $D -- "Schema lint and pgTAP=absent"
