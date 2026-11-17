@@ -9,6 +9,8 @@ Canonical build, test, and lint commands for this repo. Any AI tool or human sho
 
 ## Commands
 
+To find the checks a change needs, run `.agents/skills/verify/scripts/select-checks.py` (see "Choosing checks" below). It selects from this table by the changed paths, runs what it selected, and prints the report that handoffs and pull requests record.
+
 | Area | Command | Needs | Run it when |
 |---|---|---|---|
 | Setup, once per clone | `git config core.hooksPath .githooks` | — | Before the first commit |
@@ -32,8 +34,22 @@ Canonical build, test, and lint commands for this repo. Any AI tool or human sho
 | Test spec | `.agents/skills/verify/scripts/check-test-spec.sh` (optional `--base <ref>`, `--head <ref>`) | bash, git | Before opening the pull request for a step with a test spec |
 | Agent hooks | `.agents/hooks/tests/test-guard-git.sh` | bash, git, python3 | Any change to `.agents/hooks/` or a hook adapter |
 | run-step scripts | `.agents/skills/run-step/scripts/test-run-step.sh` | bash, git, python3 | Any change to `.agents/skills/run-step/` |
+| Check selection | `.agents/skills/verify/scripts/select-checks.py` (`--dry-run`, `--worktree`, `--body-file <file>`, `--base <ref>`, `--head <ref>`) | python3, git; each selected check's own needs | Before a handoff or pull request: it picks and runs the checks above |
+| Check selection tests | `.agents/skills/verify/scripts/test-select-checks.sh` | bash, git, python3 | Any change to `select-checks.py` or its tests |
 
 CI runs the same commands: `ci` (`.github/workflows/ci.yml`: .NET build and tests, images and health checks), `db-tests` (`run_tests.sh`), `test-guardrail`, and `harness` (`.github/workflows/harness.yml`: the harness checks below).
+
+## Choosing checks
+
+`select-checks.py` maps the changed paths to the checks in the Commands table, runs the ones it selects, and reports every check as **passed**, **failed**, **not run** (with the reason), **covered** (by a wider run), **not available** (the sidecar's pytest and ruff, until they exist), or not selected (with the paths that would select it). It also lists any changed path no check reads, for review by hand: plans, `docs/`, and `infrastructure/docker/`, for example. The reference check reads only the instruction files.
+
+* **Changed paths** are `git diff --name-only --no-renames` from the merge base with `--base` (default `origin/main`) to `--head` (default `HEAD`), so a moved or deleted file counts by both paths. `--worktree` adds uncommitted and untracked files.
+* **The rules mirror CI.** A path selects locally what it triggers in CI, including the `db-tests` path filter (`docs/architecture/model-validation-scenarios.md` selects `run_tests.sh`). `infrastructure/postgres/` also selects the GridTopology integration tests, which mount its schema; when the full .NET run is selected, they are reported as covered by it. The reference check runs for every change. The contract check needs the pull request description (`--body-file`); without one it is not run.
+* **Exit status:** 0 when every selected check passed, 1 when any failed, 3 when none failed but one did not run (a missing tool, Docker unreachable, a timeout, or no `--body-file`), 2 on usage errors. A check that does not exist yet does not change it. Each check has a timeout, so a hang is reported as not run.
+* `--dry-run` selects and reports without running anything; it reads git only, so it works in any sandbox.
+* Each check's output is in `<tmp>/select-checks/<check>.log`; a failure prints the log's tail.
+
+Copy the report into the handoff and the pull request's "Validation" section. A selected check that did not run is reported as not run, never as passed. Not selected means not needed locally: CI still runs `ci`, `harness`, and `test-guardrail` on every pull request.
 
 ## Harness checks
 

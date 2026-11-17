@@ -70,7 +70,7 @@ When the plan and the reviewed tests leave a choice open and it changes no publi
 ## Verify
 
 1. Run the reviewed tests until they all pass.
-2. Run every check in the step's acceptance criteria, and the checks `.agents/skills/verify/SKILL.md` lists for the paths you changed. For a .NET module step that means at least `dotnet build VppAggregator.slnx` with no warnings and `dotnet test --solution VppAggregator.slnx` (architecture and test-guardrail suites included); add `infrastructure/postgres/tests/run_tests.sh` when the step touches the schema or its integration tests use the database.
+2. Run `.agents/skills/verify/scripts/select-checks.py --body-file <draft description>` after your last commit. It selects the checks for the paths you changed (`.agents/skills/verify/SKILL.md`, "Choosing checks"), runs them, and reports each as passed, failed, or not run. For a .NET module step it selects at least the build and `dotnet test --solution VppAggregator.slnx` (architecture and test-guardrail suites included), and `run_tests.sh` when the step touches the schema. Also run every check the step's acceptance criteria name that the report does not list, and confirm the build has no warnings. Exit status 0 means every selected check passed; 3 means one did not run, which blocks the pull request like a failure.
 3. Check yourself against the spec commit:
    * `git diff <sha>..HEAD --stat -- tests/ infrastructure/postgres/tests/` shows only new files or new tests, nothing changed in the reviewed ones;
    * every signature in the stub list is unchanged in `git diff <sha>..HEAD`;
@@ -91,7 +91,7 @@ When everything passes, push the branch and open one pull request against `main`
 Report:
 
 1. **Result:** each reviewed test or test ID, and whether it passes.
-2. **Checks:** each command from step 2 and its result; any check that could not run, and why.
+2. **Checks:** the `select-checks.py` report from step 2, unchanged, plus any criterion check it does not list and its result.
 3. **Self-check:** the diff and signature results from step 3.
 4. **Changes:** the production files you changed or added, and any new tests.
 5. **Stopped on:** any reviewed test or stub you reported as wrong, or any public-surface addition you proposed and are waiting on, if you stopped.

@@ -69,7 +69,7 @@ Run the tests you wrote, using the commands in `.agents/skills/verify/SKILL.md`,
 | Fails for any other reason (compile error, broken fixture, wrong setup) | A defect in the test | Fix it |
 | Cannot run (no Docker, sandbox restrictions) | Not verified | Report exactly which tests did not run and why; never claim they ran |
 
-Also run the existing tests in the projects you touched, and the architecture tests if you added stubs or projects. They must still pass: the stubs may not break anything.
+Also run the existing tests in the projects you touched, and the architecture tests if you added stubs or projects. They must still pass: the stubs may not break anything. `.agents/skills/verify/scripts/select-checks.py --worktree --dry-run` lists the suites your change selects; your new tests fail by design, so run those suites yourself rather than reading its exit status.
 
 ## Commit and hand off
 
