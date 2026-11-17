@@ -44,7 +44,8 @@
 
 ## Validation
 
-<!-- List the verification commands/checks run and summarize results. Explain any skipped, failed, or unavailable checks. -->
+<!-- Paste the report from `.agents/skills/verify/scripts/select-checks.py` (the checks for the changed paths, each passed,
+     failed, or not run with the reason). Add any other check run, and explain any skipped, failed, or unavailable check. -->
 
 - [ ] <!-- command or check and result -->
 

@@ -12,6 +12,7 @@ This file exists only so Claude Code discovers the agent under `.claude/agents/`
 
 The sandbox blocks the Unix sockets that `dotnet` and Docker use, so the commands in `.agents/skills/verify/SKILL.md` can hang or fail here:
 
+* `select-checks.py` runs the canonical commands (plain `dotnet build`, `dotnet test`, Docker), which hang or fail in the sandbox. Run it with `--dry-run` in the sandbox to see what it selects, then run it with the sandbox disabled. A sandboxed run reports the hung checks as not run (timed out), never as passed.
 * Build with `dotnet build VppAggregator.slnx -m:1 -nodeReuse:false -p:UseSharedCompilation=false`.
 * Run unit and architecture tests through the built test executable, for example `tests/Rva.Modules.GridTopology.Tests/bin/Debug/net10.0/Rva.Modules.GridTopology.Tests`, with `-class <FullName>` or `-method <FullName>` to filter. The executable does not accept MTP's `--filter-class`.
 * Integration tests and `run_tests.sh` need Docker: retry that command with the sandbox disabled after the sandboxed attempt shows the socket denial. If that is declined, those tests did not run, so do not open the pull request.
