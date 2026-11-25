@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Serilog.Core;
 
 namespace Rva.Modules.GridTopology.Integration.Tests.Infrastructure;
@@ -11,13 +12,16 @@ namespace Rva.Modules.GridTopology.Integration.Tests.Infrastructure;
 /// The real host in memory, in the Production environment (so error responses are what a client would get; Development
 /// would show the exception page), with every required setting supplied in memory and the Core connection string
 /// pointing at the test's database. Adds the test-only endpoints of <see cref="TestEndpoints"/> and captures Serilog
-/// events in <see cref="Logs"/>.
+/// events in <see cref="Logs"/>. Its start is gated (<see cref="StartGate"/>), so a startup failure always surfaces as
+/// the failure itself.
 /// </summary>
 internal sealed class TopologyHostFactory(
     string coreConnectionString,
     IReadOnlyDictionary<string, string?>? settings = null,
     Action<IServiceCollection>? configureServices = null) : WebApplicationFactory<Program>
 {
+    private readonly StartGate gate = new();
+
     public SerilogCapture Logs { get; } = new();
 
     public override async ValueTask DisposeAsync()
@@ -48,6 +52,9 @@ internal sealed class TopologyHostFactory(
             services.AddSingleton<ILogEventSink>(Logs);
             services.AddSingleton<IStartupFilter, TestEndpoints>();
             configureServices?.Invoke(services);
+            gate.AddTo(services);
         });
     }
+
+    protected override IHost CreateHost(IHostBuilder builder) => gate.Start(builder);
 }

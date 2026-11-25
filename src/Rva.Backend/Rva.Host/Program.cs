@@ -13,10 +13,13 @@ using Serilog.Events;
 var builder = WebApplication.CreateBuilder(args);
 
 // Serilog is configured here only; modules log through ILogger<T>. Settings come from the "Serilog" section.
+// preserveStaticLogger: the host owns its logger and leaves the static Serilog.Log alone, so hosts in one process (the
+// in-memory test hosts) never log into, or on disposal close, each other's pipeline.
 builder.Services.AddSerilog((services, logger) => logger
     .ReadFrom.Configuration(builder.Configuration)
     .ReadFrom.Services(services)
-    .Enrich.FromLogContext());
+    .Enrich.FromLogContext(),
+    preserveStaticLogger: true);
 
 builder.Services.AddDeploymentSettings(builder.Configuration);
 builder.Services.AddIntegrationEvents();
@@ -34,10 +37,15 @@ var app = builder.Build();
 
 // The exception that caused a 5xx is logged once at Error by whoever handled it; the request summary stays below Error
 // so a failed request is not counted twice.
-app.UseSerilogRequestLogging(options => options.GetLevel = (context, _, exception) =>
-    exception is not null ? LogEventLevel.Error
-    : context.Response.StatusCode >= StatusCodes.Status500InternalServerError ? LogEventLevel.Warning
-    : LogEventLevel.Information);
+// The middleware would otherwise write to the static Serilog.Log, which this host does not set.
+app.UseSerilogRequestLogging(options =>
+{
+    options.Logger = app.Services.GetRequiredService<Serilog.ILogger>();
+    options.GetLevel = (context, _, exception) =>
+        exception is not null ? LogEventLevel.Error
+        : context.Response.StatusCode >= StatusCodes.Status500InternalServerError ? LogEventLevel.Warning
+        : LogEventLevel.Information;
+});
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

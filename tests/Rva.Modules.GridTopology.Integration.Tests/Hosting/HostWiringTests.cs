@@ -5,17 +5,20 @@ using Microsoft.Extensions.Options;
 using Rva.Modules.GridTopology.Contracts;
 using Rva.Modules.GridTopology.Integration.Tests.Infrastructure;
 using Rva.Modules.GridTopology.Persistence;
+using Serilog.Events;
 
 namespace Rva.Modules.GridTopology.Integration.Tests.Hosting;
 
 /// <summary>
 /// The module in the real host: wiring (A-07), health with and without a database (A-08, A-28), the time zone setting
-/// (A-29), and problem+json for unknown routes.
+/// (A-29), problem+json for unknown routes, and each host keeping its own logs.
 /// </summary>
 public class HostWiringTests(PostgresContainerFixture postgres)
 {
     // Nothing listens on port 1; the password must never appear in a response.
     internal const string Unreachable = "Host=127.0.0.1;Port=1;Database=rva_core;Username=postgres;Password=unreachable-secret;Timeout=2";
+
+    private static readonly TimeSpan LogWait = TimeSpan.FromSeconds(10);
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -81,6 +84,33 @@ public class HostWiringTests(PostgresContainerFixture postgres)
     }
 
     [Fact]
+    public async Task Each_host_keeps_its_own_logs_when_another_starts_and_stops()
+    {
+        // Hosts in one test process must not share Serilog's static logger: a host that set it on start would take the
+        // others' events, and on disposal close it for all of them (AI_HARNESS_PLAN.md section 7, ai-07a).
+        await using var first = new TopologyHostFactory(Unreachable);
+        using var firstClient = first.CreateClient();
+        var second = new TopologyHostFactory(Unreachable);
+        try
+        {
+            using var secondClient = second.CreateClient();
+
+            await firstClient.GetAsync("/_probe/while-another-runs", Token);
+
+            await first.Logs.WaitForAsync(e => Summarizes(e, "/_probe/while-another-runs"), LogWait, Token);
+            Assert.DoesNotContain(second.Logs.Events, e => Summarizes(e, "/_probe/while-another-runs"));
+        }
+        finally
+        {
+            await second.DisposeAsync();
+        }
+
+        await firstClient.GetAsync("/_probe/after-another-stopped", Token);
+
+        await first.Logs.WaitForAsync(e => Summarizes(e, "/_probe/after-another-stopped"), LogWait, Token);
+    }
+
+    [Fact]
     public async Task Unknown_route_is_problem_json_with_a_code_and_trace_id()
     {
         await using var host = new TopologyHostFactory(Unreachable);
@@ -90,4 +120,8 @@ public class HostWiringTests(PostgresContainerFixture postgres)
 
         await ProblemAssertions.AssertSanitizedProblemAsync(response, HttpStatusCode.NotFound, "Rva.NotFound");
     }
+
+    // The request summary (Serilog request logging) for one path.
+    private static bool Summarizes(LogEvent logEvent, string path) =>
+        logEvent.Properties.TryGetValue("RequestPath", out var value) && value is ScalarValue { Value: string logged } && logged == path;
 }
