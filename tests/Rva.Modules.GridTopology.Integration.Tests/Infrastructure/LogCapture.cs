@@ -36,10 +36,40 @@ internal sealed class LogCapture : ILoggerProvider
 internal sealed class SerilogCapture : ILogEventSink
 {
     private readonly ConcurrentQueue<LogEvent> events = new();
+    private readonly List<(Func<LogEvent, bool> Match, TaskCompletionSource<LogEvent> Seen)> waiters = [];
+    private readonly Lock sync = new();
 
     public IReadOnlyList<LogEvent> Events => events.ToArray();
 
     public IReadOnlyList<LogEvent> Errors => Events.Where(e => e.Level >= LogEventLevel.Error).ToList();
 
-    public void Emit(LogEvent logEvent) => events.Enqueue(logEvent);
+    public void Emit(LogEvent logEvent)
+    {
+        lock (sync)
+        {
+            events.Enqueue(logEvent);
+            foreach (var waiter in waiters.Where(w => w.Match(logEvent)).ToList())
+            {
+                waiters.Remove(waiter);
+                waiter.Seen.TrySetResult(logEvent);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The first event matching <paramref name="match"/>, waiting for it if needed. For events written after the
+    /// response reaches the client, such as the request summary, which the outermost middleware writes last.
+    /// </summary>
+    public Task<LogEvent> WaitForAsync(Func<LogEvent, bool> match, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        lock (sync)
+        {
+            var logged = events.FirstOrDefault(match);
+            if (logged is not null)
+                return Task.FromResult(logged);
+            var seen = new TaskCompletionSource<LogEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+            waiters.Add((match, seen));
+            return seen.Task.WaitAsync(timeout, cancellationToken);
+        }
+    }
 }
